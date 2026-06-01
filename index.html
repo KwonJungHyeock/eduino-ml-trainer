@@ -5,9 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>EDUINO · AI 학습·추론 체험</title>
 
-<!-- TensorFlow.js + MobileNet -->
+<!-- TensorFlow.js + Models -->
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.5.4/dist/speech-commands.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.2.0/dist/body-pix.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/depth-estimation@0.1.0/dist/depth-estimation.min.js"></script>
 
 <!-- 폰트: Pretendard (한국어 본문) + JetBrains Mono (텔레메트리 데이터) -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
@@ -194,12 +199,48 @@
 
   /* ─────────── 탭 패널 (전환 영역) ─────────── */
   .tab-panel { display: none; }
-  .tab-panel.active {
+  .tab-panel.active { display: block; }
+
+  /* 서브 탭 (지도학습 안의 포즈/음성 등) */
+  .sub-tabs {
+    display: flex; gap: 6px; margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sub-tab {
+    background: none; border: none; padding: 10px 16px;
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--sans); font-size: 13.5px; font-weight: 500;
+    color: var(--ink-3); cursor: pointer; position: relative;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: .15s;
+  }
+  .sub-tab:hover:not(.disabled):not(.active) { color: var(--ink-2); }
+  .sub-tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+  .sub-tab.disabled { color: var(--ink-4); cursor: not-allowed; }
+  .sub-tab svg { width: 16px; height: 16px; }
+  .sub-badge {
+    font-family: var(--mono); font-size: 9px; font-weight: 500;
+    padding: 2px 6px; border-radius: 4px;
+    background: var(--panel-soft); color: var(--ink-4);
+    border: 1px solid var(--border); letter-spacing: 0.04em;
+  }
+
+  .sub-panel { display: none; }
+  .sub-panel.active {
     display: grid;
     grid-template-columns: 280px 1fr 320px;
     gap: 14px;
   }
-  @media (max-width: 1180px) { .tab-panel.active { grid-template-columns: 1fr; } }
+  @media (max-width: 1180px) { .sub-panel.active { grid-template-columns: 1fr; } }
+
+  /* 포즈 인식 - 키포인트 오버레이 캔버스 */
+  .video-wrap canvas.pose-overlay {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    transform: scaleX(-1);
+  }
 
   /* ─────────── 지도학습 placeholder ─────────── */
   .super-hero {
@@ -681,8 +722,8 @@
       </svg>
     </div>
     <div class="mt-text">
-      <span class="mt-name">직접학습</span>
-      <span class="mt-sub">CAMERA · IMAGE · KNN / TRANSFER</span>
+      <span class="mt-name">이미지 학습</span>
+      <span class="mt-sub">MOBILENET · CLASSIFY</span>
     </div>
     <span class="mt-badge">LIVE</span>
   </div>
@@ -695,8 +736,8 @@
       </svg>
     </div>
     <div class="mt-text">
-      <span class="mt-name">지도학습</span>
-      <span class="mt-sub">POSE · AUDIO · MULTIMODAL</span>
+      <span class="mt-name">동작 학습</span>
+      <span class="mt-sub">MOVENET · POSE</span>
     </div>
     <span class="mt-badge">EXTENDED</span>
   </div>
@@ -710,8 +751,8 @@
       </svg>
     </div>
     <div class="mt-text">
-      <span class="mt-name">사전학습</span>
-      <span class="mt-sub">DETECTION · SEGMENT · DEPTH</span>
+      <span class="mt-name">사전학습 추론</span>
+      <span class="mt-sub">DETECT · SEGMENT · DEPTH</span>
     </div>
     <span class="mt-badge">INFER</span>
   </div>
@@ -721,6 +762,7 @@
 <main>
   <!-- ╔═════════════ 직접학습 탭 ═════════════╗ -->
   <div id="panel-direct" class="tab-panel active">
+  <div class="sub-panel active">
   <!-- 좌: 클래스 -->
   <aside class="card">
     <div class="card-h">
@@ -863,60 +905,372 @@
     </div>
   </aside>
   </div>
+  </div>
   <!-- ╚═════════════ /직접학습 ═════════════╝ -->
 
   <!-- ╔═════════════ 지도학습 탭 ═════════════╗ -->
   <div id="panel-supervised" class="tab-panel">
-    <div class="super-hero">
-      <h2>지도학습</h2>
-      <p class="lead">
-        포즈와 음성으로 만드는 인식기.<br>
-        라벨이 있는 데이터로 모델을 학습시키는 정통 지도학습 워크플로우를 체험합니다.
-      </p>
-      <div class="super-grid">
-        <div class="super-algo">
-          <h3>포즈 인식</h3>
-          <p class="algo-sub">MOVENET · KEYPOINT + KNN</p>
-          <span class="algo-status">PHASE 3 · 준비 중</span>
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-sub="pose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="5" r="2.2"/>
+          <path d="M12 7.5v5"/>
+          <path d="M7 10l5 2.5 5-2.5"/>
+          <path d="M12 12.5L9 21M12 12.5L15 21"/>
+        </svg>
+        포즈 인식
+      </button>
+      <button class="sub-tab" data-sub="audio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v18M7 8v8M17 8v8M3 11v2M21 11v2"/>
+        </svg>
+        음성 학습
+      </button>
+    </div>
+
+    <!-- ─── 포즈 인식 sub-panel ─── -->
+    <div id="sub-pose" class="sub-panel active">
+      <aside class="card">
+        <div class="card-h">
+          <span class="label">POSE CLASSES</span>
+          <span class="meta" id="p-class-count-meta">0 / 4</span>
         </div>
-        <div class="super-algo">
-          <h3>음성 분류</h3>
-          <p class="algo-sub">SPEECH COMMANDS · TRANSFER</p>
-          <span class="algo-status">PHASE 4 · 준비 중</span>
+        <div class="card-b">
+          <div id="p-class-list"></div>
+          <button class="btn ghost" id="p-add-class" style="width:100%;margin-top:6px">+ 동작 추가</button>
+          <p class="hint">동작을 만들고 클래스를 클릭하여 그 동작 자세로 데이터를 모으세요. (예: 팔 들기, 앉기, T자세)</p>
         </div>
-      </div>
+      </aside>
+
+      <section style="display:flex;flex-direction:column;gap:14px">
+        <div class="card stage-card">
+          <div class="steps-bar">
+            <div class="step active" data-step="1"><div class="step-num">1</div><div class="step-text"><div class="step-label">동작 만들기</div><div class="step-sub">DEFINE</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="2"><div class="step-num">2</div><div class="step-text"><div class="step-label">자세 수집</div><div class="step-sub">CAPTURE</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="3"><div class="step-num">3</div><div class="step-text"><div class="step-label">모델 학습</div><div class="step-sub">TRAIN</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="4"><div class="step-num">4</div><div class="step-text"><div class="step-label">실시간 추론</div><div class="step-sub">INFER</div></div></div>
+          </div>
+
+          <div class="video-wrap">
+            <video id="p-webcam" autoplay playsinline muted></video>
+            <canvas id="p-pose-overlay" class="pose-overlay"></canvas>
+            <div class="video-overlay" id="p-cam-overlay">
+              <div>
+                <div class="ph">CAMERA · STANDBY</div>
+                <div class="ph-msg">카메라를 켜면 키포인트가 표시됩니다</div>
+              </div>
+            </div>
+            <div class="cam-overlay-top">
+              <div class="cam-target">수집 대상 · <b id="p-cap-target-name">—</b></div>
+              <div class="live-dot" id="p-live-dot">REC</div>
+            </div>
+          </div>
+
+          <div class="cam-controls">
+            <button class="btn" id="p-cam-toggle">카메라 켜기</button>
+            <button class="btn blue" id="p-capture" disabled>자세 캡처 (꾹 누르면 연속)</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <span class="label">TRAINING</span>
+            <span class="meta">MOVENET · KEYPOINT + DENSE</span>
+          </div>
+          <div class="card-b">
+            <div class="train-row">
+              <label>학습 횟수</label>
+              <input type="number" id="p-epochs" value="40" min="5" max="100" />
+              <button class="btn primary" id="p-train" disabled>모델 학습 시작</button>
+            </div>
+            <div class="progress"><div id="p-train-bar"></div></div>
+            <div class="metrics">
+              <div><span class="k">EPOCH</span><span class="v" id="p-m-epoch">0 / 0</span></div>
+              <div><span class="k">LOSS</span><span class="v" id="p-m-loss">—</span></div>
+              <div><span class="k">ACCURACY</span><span class="v" id="p-m-acc">—</span></div>
+            </div>
+
+            <div class="train-chart" id="p-train-chart-box">
+              <div class="train-chart-head">
+                <span class="train-chart-title">LEARNING CURVE</span>
+                <div class="train-chart-legend">
+                  <span class="legend-acc">Accuracy</span>
+                  <span class="legend-loss">Loss</span>
+                </div>
+              </div>
+              <svg id="p-train-chart-svg" viewBox="0 0 400 110" preserveAspectRatio="none">
+                <line class="train-chart-grid" x1="0" y1="20" x2="400" y2="20"/>
+                <line class="train-chart-grid" x1="0" y1="55" x2="400" y2="55"/>
+                <line class="train-chart-grid" x1="0" y1="90" x2="400" y2="90"/>
+                <polyline id="p-chart-acc" fill="none" stroke="#059669" stroke-width="2" stroke-linejoin="round" points=""/>
+                <polyline id="p-chart-loss" fill="none" stroke="#d97706" stroke-width="2" stroke-linejoin="round" points=""/>
+                <text class="train-chart-axis" x="4" y="18">100%</text>
+                <text class="train-chart-axis" x="4" y="93">0</text>
+              </svg>
+            </div>
+
+            <div class="confusion" id="p-confusion-box">
+              <div class="confusion-head">
+                <span>CONFUSION MATRIX</span>
+                <span class="meta" id="p-confusion-meta">SELF-PREDICTION</span>
+              </div>
+              <div id="p-confusion-table-wrap"></div>
+            </div>
+
+            <p class="hint" id="p-train-hint">동작 2개 이상, 각각에 자세 데이터가 있어야 학습할 수 있습니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="card-h">
+          <span class="label">INFERENCE</span>
+          <span class="meta" id="p-infer-meta">IDLE</span>
+        </div>
+        <div class="card-b">
+          <div class="top-pred idle" id="p-top-pred">
+            <div class="tp-label">PREDICTION</div>
+            <div class="tp-name">아직 학습 전</div>
+            <div class="tp-conf"></div>
+          </div>
+          <div id="p-bars"></div>
+          <button class="btn blue" id="p-infer-toggle" disabled style="width:100%;margin-top:14px">추론 시작</button>
+          <p class="hint">학습 후 실시간으로 자세를 분류합니다.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ─── 음성 학습 sub-panel ─── -->
+    <div id="sub-audio" class="sub-panel" style="display:none">
+      <aside class="card">
+        <div class="card-h">
+          <span class="label">AUDIO CLASSES</span>
+          <span class="meta" id="a-class-count-meta">0 / 4</span>
+        </div>
+        <div class="card-b">
+          <div id="a-class-list"></div>
+          <button class="btn ghost" id="a-add-class" style="width:100%;margin-top:6px">+ 단어 추가</button>
+          <p class="hint">단어를 만들고 클래스를 선택해 마이크에 1초씩 녹음합니다. (예: 켜, 꺼, 시작)</p>
+        </div>
+      </aside>
+
+      <section style="display:flex;flex-direction:column;gap:14px">
+        <div class="card stage-card">
+          <div class="steps-bar">
+            <div class="step active" data-step="1"><div class="step-num">1</div><div class="step-text"><div class="step-label">단어 만들기</div><div class="step-sub">DEFINE</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="2"><div class="step-num">2</div><div class="step-text"><div class="step-label">음성 녹음</div><div class="step-sub">CAPTURE</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="3"><div class="step-num">3</div><div class="step-text"><div class="step-label">모델 학습</div><div class="step-sub">TRAIN</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="4"><div class="step-num">4</div><div class="step-text"><div class="step-label">실시간 추론</div><div class="step-sub">INFER</div></div></div>
+          </div>
+
+          <div class="video-wrap" style="aspect-ratio:16/8;background:#0a0e1a">
+            <canvas id="a-waveform" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>
+            <div class="video-overlay" id="a-mic-overlay">
+              <div>
+                <div class="ph">MIC · STANDBY</div>
+                <div class="ph-msg">마이크를 켜면 파형이 표시됩니다</div>
+              </div>
+            </div>
+            <div class="cam-overlay-top">
+              <div class="cam-target">녹음 대상 · <b id="a-cap-target-name">—</b></div>
+              <div class="live-dot" id="a-live-dot">REC</div>
+            </div>
+          </div>
+
+          <div class="cam-controls">
+            <button class="btn" id="a-mic-toggle">마이크 켜기</button>
+            <button class="btn blue" id="a-capture" disabled>1초 녹음</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <span class="label">TRAINING</span>
+            <span class="meta">SPEECH COMMANDS · TRANSFER</span>
+          </div>
+          <div class="card-b">
+            <div class="train-row">
+              <label>학습 횟수</label>
+              <input type="number" id="a-epochs" value="25" min="5" max="100" />
+              <button class="btn primary" id="a-train" disabled>모델 학습 시작</button>
+            </div>
+            <div class="progress"><div id="a-train-bar"></div></div>
+            <div class="metrics">
+              <div><span class="k">EPOCH</span><span class="v" id="a-m-epoch">0 / 0</span></div>
+              <div><span class="k">LOSS</span><span class="v" id="a-m-loss">—</span></div>
+              <div><span class="k">ACCURACY</span><span class="v" id="a-m-acc">—</span></div>
+            </div>
+            <p class="hint" id="a-train-hint">단어 2개 이상, 각각에 최소 8회 녹음이 있어야 학습할 수 있습니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="card-h">
+          <span class="label">INFERENCE</span>
+          <span class="meta" id="a-infer-meta">IDLE</span>
+        </div>
+        <div class="card-b">
+          <div class="top-pred idle" id="a-top-pred">
+            <div class="tp-label">PREDICTION</div>
+            <div class="tp-name">아직 학습 전</div>
+            <div class="tp-conf"></div>
+          </div>
+          <div id="a-bars"></div>
+          <button class="btn blue" id="a-infer-toggle" disabled style="width:100%;margin-top:14px">추론 시작</button>
+          <p class="hint">학습 후 마이크 입력을 실시간으로 분류합니다.</p>
+        </div>
+      </aside>
     </div>
   </div>
   <!-- ╚═════════════ /지도학습 ═════════════╝ -->
 
-  <!-- ╔═════════════ 사전학습 탭 ═════════════╗ -->
+  <!-- ╔═════════════ 사전학습 추론 탭 ═════════════╗ -->
   <div id="panel-pretrained" class="tab-panel">
-    <div class="super-hero">
-      <h2>사전학습</h2>
-      <p class="lead">
-        대규모 데이터로 이미 학습된 모델로 추론만 수행합니다.<br>
-        AI가 시각 정보를 어떻게 다르게 해석하는지 한눈에 비교해 보세요.
-      </p>
-      <div class="super-grid">
-        <div class="super-algo">
-          <h3>객체 탐지</h3>
-          <p class="algo-sub">COCO-SSD · 90 CLASSES</p>
-          <span class="algo-status">PHASE 5 · 준비 중</span>
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-sub="detect">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2"/>
+          <rect x="8" y="8" width="5" height="5"/>
+        </svg>
+        객체 탐지
+      </button>
+      <button class="sub-tab" data-sub="segment">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="7" r="3"/>
+          <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+        </svg>
+        인물 분리
+      </button>
+      <button class="sub-tab" data-sub="depth">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6l9-3 9 3M3 6v12l9 3M3 6l9 3M12 9v12M21 6l-9 3M21 6v12l-9 3"/>
+        </svg>
+        깊이 추정
+      </button>
+    </div>
+
+    <!-- ─── 객체 탐지 ─── -->
+    <div id="sub-detect" class="sub-panel active">
+      <aside class="card">
+        <div class="card-h"><span class="label">MODEL</span><span class="meta">COCO-SSD</span></div>
+        <div class="card-b">
+          <p class="hint" style="margin:0 0 12px">대규모 데이터(<b>COCO</b>) 90개 클래스로 사전 학습된 모델. 카메라 영상에서 사람·차·동물 등을 실시간으로 박스 표시합니다.</p>
+          <div class="metrics" style="margin-top:8px">
+            <div><span class="k">CLASSES</span><span class="v">90</span></div>
+            <div><span class="k">STATUS</span><span class="v" id="d-status">IDLE</span></div>
+            <div><span class="k">FPS</span><span class="v" id="d-fps">—</span></div>
+          </div>
         </div>
-        <div class="super-algo">
-          <h3>인물 분리</h3>
-          <p class="algo-sub">BODYPIX · SEGMENTATION</p>
-          <span class="algo-status">PHASE 5 · 준비 중</span>
+      </aside>
+      <section>
+        <div class="card stage-card">
+          <div class="video-wrap">
+            <video id="d-webcam" autoplay playsinline muted></video>
+            <canvas id="d-overlay" class="pose-overlay"></canvas>
+            <div class="video-overlay" id="d-cam-overlay">
+              <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 객체가 탐지됩니다</div></div>
+            </div>
+          </div>
+          <div class="cam-controls">
+            <button class="btn primary" id="d-cam-toggle" style="width:100%">카메라 켜기 · 탐지 시작</button>
+          </div>
         </div>
-        <div class="super-algo">
-          <h3>깊이 추정</h3>
-          <p class="algo-sub">PORTRAIT · MONOCULAR DEPTH</p>
-          <span class="algo-status">PHASE 5 · 준비 중</span>
+      </section>
+      <aside class="card">
+        <div class="card-h"><span class="label">DETECTED</span><span class="meta" id="d-count">0</span></div>
+        <div class="card-b">
+          <div id="d-list" style="display:flex;flex-direction:column;gap:6px"></div>
         </div>
-      </div>
+      </aside>
+    </div>
+
+    <!-- ─── 인물 분리 ─── -->
+    <div id="sub-segment" class="sub-panel" style="display:none">
+      <aside class="card">
+        <div class="card-h"><span class="label">MODEL</span><span class="meta">BODYPIX</span></div>
+        <div class="card-b">
+          <p class="hint" style="margin:0 0 12px"><b>BodyPix</b>는 사람의 윤곽을 픽셀 단위로 분리합니다. 배경을 제거하거나 인물만 강조할 수 있어요.</p>
+          <div class="metrics" style="margin-top:8px">
+            <div><span class="k">MODE</span><span class="v">PERSON SEG</span></div>
+            <div><span class="k">STATUS</span><span class="v" id="s-status">IDLE</span></div>
+            <div><span class="k">FPS</span><span class="v" id="s-fps">—</span></div>
+          </div>
+        </div>
+      </aside>
+      <section>
+        <div class="card stage-card">
+          <div class="video-wrap">
+            <video id="s-webcam" autoplay playsinline muted style="display:none"></video>
+            <canvas id="s-canvas" style="position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)"></canvas>
+            <div class="video-overlay" id="s-cam-overlay">
+              <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 인물만 분리됩니다</div></div>
+            </div>
+          </div>
+          <div class="cam-controls">
+            <button class="btn primary" id="s-cam-toggle" style="flex:1">카메라 켜기 · 분리 시작</button>
+            <button class="btn" id="s-mode-toggle">배경 제거</button>
+          </div>
+        </div>
+      </section>
+      <aside class="card">
+        <div class="card-h"><span class="label">PIXELS</span><span class="meta" id="s-meta">—</span></div>
+        <div class="card-b">
+          <div class="metrics" style="grid-template-columns:1fr">
+            <div><span class="k">PERSON PIXELS</span><span class="v" id="s-person-px">—</span></div>
+            <div style="margin-top:8px"><span class="k">RATIO</span><span class="v" id="s-ratio">—</span></div>
+          </div>
+          <p class="hint" style="margin-top:12px">"배경 제거"를 누르면 인물만 보이고, 다시 누르면 인물에 색을 칠합니다.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ─── 깊이 추정 ─── -->
+    <div id="sub-depth" class="sub-panel" style="display:none">
+      <aside class="card">
+        <div class="card-h"><span class="label">MODEL</span><span class="meta">AR PORTRAIT</span></div>
+        <div class="card-b">
+          <p class="hint" style="margin:0 0 12px">단일 카메라로 <b>깊이(거리)</b>를 추정합니다. 가까울수록 밝게, 멀수록 어둡게 표시됩니다. (인물 포함 장면에 최적)</p>
+          <div class="metrics" style="margin-top:8px">
+            <div><span class="k">MODE</span><span class="v">AR DEPTH</span></div>
+            <div><span class="k">STATUS</span><span class="v" id="z-status">IDLE</span></div>
+            <div><span class="k">FPS</span><span class="v" id="z-fps">—</span></div>
+          </div>
+        </div>
+      </aside>
+      <section>
+        <div class="card stage-card">
+          <div class="video-wrap">
+            <video id="z-webcam" autoplay playsinline muted style="display:none"></video>
+            <canvas id="z-canvas" style="position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)"></canvas>
+            <div class="video-overlay" id="z-cam-overlay">
+              <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 깊이가 표시됩니다</div></div>
+            </div>
+          </div>
+          <div class="cam-controls">
+            <button class="btn primary" id="z-cam-toggle" style="width:100%">카메라 켜기 · 깊이 시작</button>
+          </div>
+        </div>
+      </section>
+      <aside class="card">
+        <div class="card-h"><span class="label">INFO</span><span class="meta" id="z-meta">—</span></div>
+        <div class="card-b">
+          <p class="hint" style="margin:0">⚠ 첫 로드 시 모델(~30MB) 다운로드. 인물이 화면에 있을 때 가장 잘 동작합니다.</p>
+          <div class="metrics" style="grid-template-columns:1fr;margin-top:12px">
+            <div><span class="k">최소 깊이 (밝음)</span><span class="v" id="z-min">—</span></div>
+            <div style="margin-top:8px"><span class="k">최대 깊이 (어두움)</span><span class="v" id="z-max">—</span></div>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
-  <!-- ╚═════════════ /사전학습 ═════════════╝ -->
+  <!-- ╚═════════════ /사전학습 추론 ═════════════╝ -->
 </main>
 
 <!-- ──────────────────────── 갤러리 모달 ──────────────────────── -->
@@ -1282,6 +1636,871 @@ function closeGallery() {
   document.getElementById('gallery-overlay').classList.remove('on');
 }
 
+/* ============================================================
+   ▌ 포즈 인식 (지도학습)
+   ─ MoveNet keypoint extraction + Dense classifier
+   ─ 직접학습과 동일한 워크플로우, MobileNet 대신 17 keypoints
+   ============================================================ */
+const POSE_PALETTE = ['#0066ff', '#d97706', '#06b6d4', '#059669', '#e11d48', '#7c3aed'];
+const POSE_MAX_CLASSES = 4;
+const POSE_FEAT_DIM = 34; // 17 keypoints × (x, y) normalized
+
+const pose = {
+  classes: [], selectedId: null,
+  detector: null, head: null,
+  stream: null, inferring: false, trained: false,
+  rafLoop: null,
+};
+let poseSeq = 0;
+
+const pEls = {
+  classList: $('p-class-list'), classCountMeta: $('p-class-count-meta'),
+  addClass: $('p-add-class'),
+  video: $('p-webcam'), camOverlay: $('p-cam-overlay'),
+  canvas: $('p-pose-overlay'),
+  capTargetName: $('p-cap-target-name'), liveDot: $('p-live-dot'),
+  camToggle: $('p-cam-toggle'), capture: $('p-capture'),
+  epochs: $('p-epochs'), train: $('p-train'),
+  trainBar: $('p-train-bar'), trainHint: $('p-train-hint'),
+  mEpoch: $('p-m-epoch'), mLoss: $('p-m-loss'), mAcc: $('p-m-acc'),
+  topPred: $('p-top-pred'), bars: $('p-bars'),
+  inferToggle: $('p-infer-toggle'), inferMeta: $('p-infer-meta'),
+  chartBox: $('p-train-chart-box'), chartAcc: $('p-chart-acc'), chartLoss: $('p-chart-loss'),
+  confBox: $('p-confusion-box'), confWrap: $('p-confusion-table-wrap'),
+};
+
+async function poseInit() {
+  pEls.addClass.addEventListener('click', () => poseAddClass());
+  pEls.camToggle.addEventListener('click', poseToggleCam);
+  pEls.train.addEventListener('click', poseTrain);
+  pEls.inferToggle.addEventListener('click', () => pose.inferring ? poseStopInfer() : poseStartInfer());
+  pEls.capture.addEventListener('mousedown', poseStartHold);
+  pEls.capture.addEventListener('touchstart', (e) => { e.preventDefault(); poseStartHold(); });
+  poseAddClass('동작 1'); poseAddClass('동작 2');
+
+  if (!window.poseDetection) { console.error('[pose] poseDetection library missing'); return; }
+  try {
+    await tf.ready();
+    try { await tf.setBackend('webgl'); } catch (_) {}
+    pose.detector = await poseDetection.createDetector(
+      poseDetection.SupportedModels.MoveNet,
+      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+    );
+    console.log('[pose] MoveNet ready, backend=', tf.getBackend());
+  } catch (e) { console.error('[pose] MoveNet load fail:', e); }
+}
+
+function poseAddClass(name) {
+  if (pose.classes.length >= POSE_MAX_CLASSES) return;
+  const id = ++poseSeq;
+  const color = POSE_PALETTE[(id - 1) % POSE_PALETTE.length];
+  pose.classes.push({ id, name: name || ('동작 ' + id), color, embeddings: [], thumbs: [] });
+  if (pose.selectedId == null) pose.selectedId = id;
+  poseRenderClasses(); poseRefresh();
+}
+function poseRemoveClass(id) {
+  pose.classes = pose.classes.filter(c => c.id !== id);
+  if (pose.selectedId === id) pose.selectedId = pose.classes[0]?.id || null;
+  poseRenderClasses(); poseRefresh();
+}
+function poseSelectClass(id) { pose.selectedId = id; poseRenderClasses(); }
+
+function poseRenderClasses() {
+  pEls.classList.innerHTML = '';
+  pose.classes.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'class-item' + (c.id === pose.selectedId ? ' selected' : '');
+    div.onclick = () => poseSelectClass(c.id);
+
+    const row = document.createElement('div');
+    row.className = 'class-row';
+    row.innerHTML = `<span class="class-dot" style="background:${c.color}"></span>`;
+
+    const input = document.createElement('input');
+    input.className = 'class-name'; input.value = c.name;
+    input.onclick = (e) => { e.stopPropagation(); poseSelectClass(c.id); };
+    input.oninput = () => { c.name = input.value || c.name; poseRenderBars(); poseUpdateCapTarget(); };
+    row.appendChild(input);
+
+    const count = document.createElement('span');
+    count.className = 'class-count'; count.textContent = c.embeddings.length;
+    row.appendChild(count);
+
+    const del = document.createElement('button');
+    del.className = 'class-del'; del.textContent = '✕'; del.title = '삭제';
+    del.onclick = (e) => { e.stopPropagation(); poseRemoveClass(c.id); };
+    row.appendChild(del);
+    div.appendChild(row);
+
+    if (c.thumbs.length) {
+      const t = document.createElement('div'); t.className = 'thumbs';
+      c.thumbs.slice(-6).forEach(src => {
+        const im = document.createElement('img'); im.src = src; t.appendChild(im);
+      });
+      if (c.embeddings.length > 6) {
+        const m = document.createElement('span'); m.className = 'more';
+        m.textContent = '+' + (c.embeddings.length - 6); t.appendChild(m);
+      }
+      div.appendChild(t);
+    }
+    pEls.classList.appendChild(div);
+  });
+  pEls.classCountMeta.textContent = pose.classes.length + ' / ' + POSE_MAX_CLASSES;
+  pEls.addClass.disabled = pose.classes.length >= POSE_MAX_CLASSES;
+  poseUpdateCapTarget();
+}
+
+function poseUpdateCapTarget() {
+  const sel = pose.classes.find(c => c.id === pose.selectedId);
+  pEls.capTargetName.textContent = sel ? sel.name : '—';
+}
+
+async function poseToggleCam() {
+  if (pose.stream) {
+    pose.stream.getTracks().forEach(t => t.stop());
+    pose.stream = null; pEls.video.srcObject = null;
+    pEls.camOverlay.style.display = 'grid';
+    pEls.camToggle.textContent = '카메라 켜기';
+    pEls.capture.disabled = true;
+    pEls.liveDot.classList.remove('on');
+    poseStopInfer();
+    poseStopOverlayLoop();
+    return;
+  }
+  try {
+    pose.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    pEls.video.srcObject = pose.stream;
+    pEls.camOverlay.style.display = 'none';
+    pEls.camToggle.textContent = '카메라 끄기';
+    pEls.capture.disabled = false;
+    pEls.liveDot.classList.add('on');
+    poseStartOverlayLoop();
+  } catch (e) {
+    pEls.camOverlay.innerHTML = '<div><div class="ph" style="color:#ef4444">CAMERA DENIED</div><div class="ph-msg">브라우저 카메라 권한을 확인하세요</div></div>';
+  }
+}
+
+/* 키포인트 추출 + 정규화 (root-relative: 어깨 중심점 기준) */
+async function extractKeypoints() {
+  if (!pose.detector || !pose.stream) return null;
+  const poses = await pose.detector.estimatePoses(pEls.video);
+  if (!poses || poses.length === 0) return null;
+  const kp = poses[0].keypoints;
+  if (kp.length < 17) return null;
+
+  const ls = kp[5], rs = kp[6];
+  const cx = (ls.x + rs.x) / 2;
+  const cy = (ls.y + rs.y) / 2;
+  const scale = Math.hypot(ls.x - rs.x, ls.y - rs.y) || 1;
+
+  const feat = [];
+  for (let i = 0; i < 17; i++) {
+    feat.push((kp[i].x - cx) / scale);
+    feat.push((kp[i].y - cy) / scale);
+  }
+  return { feat, kp };
+}
+
+/* 키포인트를 캔버스에 그리기 (시각 피드백) */
+const POSE_EDGES = [
+  [5,7],[7,9],[6,8],[8,10],[5,6],[5,11],[6,12],
+  [11,12],[11,13],[13,15],[12,14],[14,16],[0,5],[0,6],
+];
+function drawKeypoints(kp) {
+  const cv = pEls.canvas;
+  const vw = pEls.video.videoWidth, vh = pEls.video.videoHeight;
+  if (!vw || !vh) return;
+  cv.width = vw; cv.height = vh;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, vw, vh);
+
+  ctx.strokeStyle = '#0066ff'; ctx.lineWidth = 3;
+  POSE_EDGES.forEach(([a, b]) => {
+    if (kp[a].score > 0.3 && kp[b].score > 0.3) {
+      ctx.beginPath(); ctx.moveTo(kp[a].x, kp[a].y); ctx.lineTo(kp[b].x, kp[b].y); ctx.stroke();
+    }
+  });
+  ctx.fillStyle = '#06b6d4';
+  kp.forEach(p => {
+    if (p.score > 0.3) {
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+}
+
+async function poseOverlayLoop() {
+  if (!pose.stream) { pose.rafLoop = null; return; }
+  if (pEls.video.readyState >= 2 && pose.detector) {
+    try {
+      const r = await extractKeypoints();
+      if (r) drawKeypoints(r.kp);
+    } catch (e) { /* skip frame */ }
+  }
+  pose.rafLoop = requestAnimationFrame(poseOverlayLoop);
+}
+function poseStartOverlayLoop() {
+  if (pose.rafLoop) return;
+  poseOverlayLoop();
+}
+function poseStopOverlayLoop() {
+  if (pose.rafLoop) cancelAnimationFrame(pose.rafLoop);
+  pose.rafLoop = null;
+  const ctx = pEls.canvas.getContext('2d');
+  ctx.clearRect(0, 0, pEls.canvas.width, pEls.canvas.height);
+}
+
+async function poseCaptureSample() {
+  const sel = pose.classes.find(c => c.id === pose.selectedId);
+  if (!sel || !pose.detector || !pose.stream) return;
+  const r = await extractKeypoints();
+  if (!r) return;
+  sel.embeddings.push(r.feat);
+
+  const cv = document.createElement('canvas');
+  cv.width = 64; cv.height = 48;
+  cv.getContext('2d').drawImage(pEls.video, 0, 0, 64, 48);
+  sel.thumbs.push(cv.toDataURL('image/jpeg', 0.6));
+
+  poseRenderClasses(); poseRefresh();
+}
+
+let poseHoldTimer = null;
+function poseStartHold() {
+  if (pEls.capture.disabled) return;
+  poseCaptureSample();
+  poseHoldTimer = setInterval(poseCaptureSample, 200);
+}
+function poseEndHold() { clearInterval(poseHoldTimer); poseHoldTimer = null; }
+
+async function poseTrain() {
+  const usable = pose.classes.filter(c => c.embeddings.length > 0);
+  if (usable.length < 2) return;
+  pEls.train.disabled = true; pEls.inferToggle.disabled = true; poseStopInfer();
+
+  const xsArr = [], ysArr = [];
+  usable.forEach((c, idx) => {
+    c.embeddings.forEach(e => {
+      xsArr.push(e);
+      const oh = new Array(usable.length).fill(0); oh[idx] = 1; ysArr.push(oh);
+    });
+  });
+  const xs = tf.tensor2d(xsArr);
+  const ys = tf.tensor2d(ysArr);
+
+  if (pose.head) pose.head.dispose();
+  pose.head = tf.sequential();
+  pose.head.add(tf.layers.dense({ inputShape: [POSE_FEAT_DIM], units: 64, activation: 'relu' }));
+  pose.head.add(tf.layers.dropout({ rate: 0.2 }));
+  pose.head.add(tf.layers.dense({ units: usable.length, activation: 'softmax' }));
+  pose.head.compile({ optimizer: tf.train.adam(0.001), loss: 'categoricalCrossentropy', metrics: ['accuracy'] });
+  pose.head._classNames = usable.map(c => ({ name: c.name, color: c.color }));
+
+  const epochs = Math.max(5, Math.min(100, +pEls.epochs.value || 40));
+  poseResetChart(); pEls.chartBox.classList.add('on'); pEls.confBox.classList.remove('on');
+
+  await pose.head.fit(xs, ys, {
+    epochs, shuffle: true, batchSize: Math.min(16, xsArr.length),
+    callbacks: {
+      onEpochEnd: (ep, logs) => {
+        const p = Math.round(((ep + 1) / epochs) * 100);
+        pEls.trainBar.style.width = p + '%';
+        pEls.mEpoch.textContent = (ep + 1) + ' / ' + epochs;
+        pEls.mLoss.textContent = logs.loss.toFixed(3);
+        const acc = logs.acc ?? logs.accuracy;
+        pEls.mAcc.textContent = acc != null ? Math.round(acc * 100) + '%' : '—';
+        posePushChartPoint(ep + 1, epochs, logs.loss, acc);
+      },
+    },
+  });
+
+  await poseBuildConfusion(xs, ys, usable);
+  xs.dispose(); ys.dispose();
+
+  pose.trained = true;
+  pEls.train.disabled = false;
+  pEls.inferToggle.disabled = !pose.stream;
+  pEls.trainHint.textContent = '학습 완료. 우측 [추론 시작]을 누르세요.';
+  poseRenderBars(); poseRefresh();
+}
+
+const poseChartHist = { loss: [], acc: [] };
+function poseResetChart() {
+  poseChartHist.loss = []; poseChartHist.acc = [];
+  pEls.chartAcc.setAttribute('points', '');
+  pEls.chartLoss.setAttribute('points', '');
+}
+function posePushChartPoint(ep, totalEp, loss, acc) {
+  poseChartHist.loss.push(loss);
+  poseChartHist.acc.push(acc != null ? acc : 0);
+  const W = 400, H = 110, padL = 24, padR = 6, padT = 8, padB = 18;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+  const n = poseChartHist.loss.length;
+  const maxLoss = Math.max(0.1, ...poseChartHist.loss);
+  const xOf = (i) => padL + (n === 1 ? plotW / 2 : (i / (totalEp - 1)) * plotW);
+  const yAcc = (v) => padT + plotH * (1 - Math.max(0, Math.min(1, v)));
+  const yLoss = (v) => padT + plotH * (1 - v / maxLoss);
+  pEls.chartAcc.setAttribute('points', poseChartHist.acc.map((v,i)=>xOf(i)+','+yAcc(v)).join(' '));
+  pEls.chartLoss.setAttribute('points', poseChartHist.loss.map((v,i)=>xOf(i)+','+yLoss(v)).join(' '));
+}
+
+async function poseBuildConfusion(xs, ys, usable) {
+  const n = usable.length;
+  const mat = Array.from({length:n}, () => new Array(n).fill(0));
+  const preds = pose.head.predict(xs);
+  const predArr = await preds.array();
+  const trueArr = await ys.array();
+  preds.dispose();
+  for (let i=0;i<predArr.length;i++) {
+    const p = predArr[i].indexOf(Math.max(...predArr[i]));
+    const t = trueArr[i].indexOf(1);
+    mat[t][p]++;
+  }
+  let html = '<table class="confusion-table"><thead><tr><th></th>';
+  usable.forEach(c => { html += `<th title="${c.name}">${c.name.slice(0,6)}</th>`; });
+  html += '</tr></thead><tbody>';
+  for (let r=0;r<n;r++) {
+    html += `<tr><th class="row-label" title="${usable[r].name}">${usable[r].name.slice(0,8)}</th>`;
+    for (let c=0;c<n;c++) {
+      const v = mat[r][c];
+      const cls = v===0?'cell zero':(r===c?'cell diag':'cell');
+      html += `<td class="${cls}">${v}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  pEls.confWrap.innerHTML = html;
+  pEls.confBox.classList.add('on');
+}
+
+function poseRenderBars() {
+  const names = pose.head?._classNames || pose.classes.map(c => ({ name: c.name, color: c.color }));
+  pEls.bars.innerHTML = '';
+  names.forEach((c, i) => {
+    const row = document.createElement('div'); row.className = 'bar-row';
+    row.innerHTML =
+      `<div class="bar-head">
+         <span class="bar-name"><span class="dot" style="background:${c.color}"></span>${c.name}</span>
+         <span class="bar-pct" id="p-pct-${i}">0%</span>
+       </div>
+       <div class="bar-track"><div class="bar-fill" id="p-fill-${i}" style="background:${c.color}"></div></div>`;
+    pEls.bars.appendChild(row);
+  });
+}
+
+function poseResetTopPred() {
+  pEls.topPred.className = 'top-pred idle';
+  pEls.topPred.querySelector('.tp-name').textContent = pose.trained ? '대기 중' : '아직 학습 전';
+  pEls.topPred.querySelector('.tp-conf').textContent = '';
+}
+
+async function poseInferLoop() {
+  if (!pose.inferring || !pose.stream || !pose.head) return;
+  const r = await extractKeypoints();
+  if (r) {
+    const x = tf.tensor2d([r.feat]);
+    const out = await pose.head.predict(x).data();
+    x.dispose();
+    const names = pose.head._classNames;
+    let topI = 0; for (let i=1;i<out.length;i++) if (out[i] > out[topI]) topI = i;
+    names.forEach((c, i) => {
+      const pct = Math.round(out[i] * 100);
+      const pctEl = $('p-pct-'+i); const fillEl = $('p-fill-'+i);
+      if (pctEl) pctEl.textContent = pct + '%';
+      if (fillEl) fillEl.style.width = pct + '%';
+    });
+    pEls.topPred.className = 'top-pred active';
+    pEls.topPred.querySelector('.tp-name').textContent = names[topI].name;
+    pEls.topPred.querySelector('.tp-conf').textContent = Math.round(out[topI]*100) + '%';
+  }
+  requestAnimationFrame(poseInferLoop);
+}
+
+function poseStartInfer() {
+  if (!pose.trained || !pose.stream) return;
+  pose.inferring = true;
+  pEls.inferToggle.textContent = '추론 중지';
+  pEls.inferMeta.textContent = 'LIVE';
+  poseInferLoop();
+}
+function poseStopInfer() {
+  pose.inferring = false;
+  pEls.inferToggle.textContent = '추론 시작';
+  pEls.inferMeta.textContent = 'IDLE';
+  poseResetTopPred();
+}
+
+function poseRefresh() {
+  const usable = pose.classes.filter(c => c.embeddings.length > 0);
+  pEls.train.disabled = usable.length < 2;
+  poseRenderBars();
+  if (!pose.trained) poseResetTopPred();
+}
+
+/* ============================================================
+   ▌ 음성 학습 (Speech Commands · Transfer Learning)
+   ============================================================ */
+const AUDIO_PALETTE = ['#0066ff', '#d97706', '#06b6d4', '#059669'];
+const AUDIO_MAX = 4;
+const audio = {
+  classes: [], selectedId: null,
+  base: null, transfer: null,
+  micStream: null, audioCtx: null, analyser: null,
+  recording: false, inferring: false, trained: false,
+  wfRaf: null,
+};
+let audioSeq = 0;
+
+const aEls = {
+  classList: $('a-class-list'), classCountMeta: $('a-class-count-meta'),
+  addClass: $('a-add-class'),
+  waveform: $('a-waveform'), micOverlay: $('a-mic-overlay'),
+  capTargetName: $('a-cap-target-name'), liveDot: $('a-live-dot'),
+  micToggle: $('a-mic-toggle'), capture: $('a-capture'),
+  epochs: $('a-epochs'), train: $('a-train'),
+  trainBar: $('a-train-bar'), trainHint: $('a-train-hint'),
+  mEpoch: $('a-m-epoch'), mLoss: $('a-m-loss'), mAcc: $('a-m-acc'),
+  topPred: $('a-top-pred'), bars: $('a-bars'),
+  inferToggle: $('a-infer-toggle'), inferMeta: $('a-infer-meta'),
+};
+
+async function audioInit() {
+  aEls.addClass.addEventListener('click', () => audioAddClass());
+  aEls.micToggle.addEventListener('click', audioToggleMic);
+  aEls.capture.addEventListener('click', audioCapture);
+  aEls.train.addEventListener('click', audioTrain);
+  aEls.inferToggle.addEventListener('click', () => audio.inferring ? audioStopInfer() : audioStartInfer());
+  audioAddClass('단어 1'); audioAddClass('단어 2');
+
+  if (!window.speechCommands) { console.error('[audio] speech-commands missing'); return; }
+  try {
+    audio.base = speechCommands.create('BROWSER_FFT');
+    await audio.base.ensureModelLoaded();
+    console.log('[audio] Speech Commands ready');
+  } catch (e) { console.error('[audio] load fail:', e); }
+}
+
+function audioAddClass(name) {
+  if (audio.classes.length >= AUDIO_MAX) return;
+  const id = ++audioSeq;
+  const color = AUDIO_PALETTE[(id - 1) % AUDIO_PALETTE.length];
+  audio.classes.push({ id, name: name || ('단어 ' + id), color, count: 0 });
+  if (audio.selectedId == null) audio.selectedId = id;
+  audioRenderClasses(); audioRefresh();
+}
+function audioRemoveClass(id) {
+  audio.classes = audio.classes.filter(c => c.id !== id);
+  if (audio.selectedId === id) audio.selectedId = audio.classes[0]?.id || null;
+  audioRenderClasses(); audioRefresh();
+}
+function audioSelectClass(id) { audio.selectedId = id; audioRenderClasses(); }
+
+function audioRenderClasses() {
+  aEls.classList.innerHTML = '';
+  audio.classes.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'class-item' + (c.id === audio.selectedId ? ' selected' : '');
+    div.onclick = () => audioSelectClass(c.id);
+    const row = document.createElement('div');
+    row.className = 'class-row';
+    row.innerHTML = `<span class="class-dot" style="background:${c.color}"></span>`;
+    const input = document.createElement('input');
+    input.className = 'class-name'; input.value = c.name;
+    input.onclick = (e) => { e.stopPropagation(); audioSelectClass(c.id); };
+    input.oninput = () => { c.name = input.value || c.name; audioRenderBars(); audioUpdateCapTarget(); };
+    row.appendChild(input);
+    const count = document.createElement('span');
+    count.className = 'class-count'; count.textContent = c.count;
+    row.appendChild(count);
+    const del = document.createElement('button');
+    del.className = 'class-del'; del.textContent = '✕'; del.title = '삭제';
+    del.onclick = (e) => { e.stopPropagation(); audioRemoveClass(c.id); };
+    row.appendChild(del);
+    div.appendChild(row);
+    aEls.classList.appendChild(div);
+  });
+  aEls.classCountMeta.textContent = audio.classes.length + ' / ' + AUDIO_MAX;
+  aEls.addClass.disabled = audio.classes.length >= AUDIO_MAX;
+  audioUpdateCapTarget();
+}
+function audioUpdateCapTarget() {
+  const sel = audio.classes.find(c => c.id === audio.selectedId);
+  aEls.capTargetName.textContent = sel ? sel.name : '—';
+}
+
+async function audioToggleMic() {
+  if (audio.micStream) {
+    audio.micStream.getTracks().forEach(t => t.stop());
+    audio.micStream = null;
+    if (audio.audioCtx) { audio.audioCtx.close(); audio.audioCtx = null; }
+    if (audio.wfRaf) { cancelAnimationFrame(audio.wfRaf); audio.wfRaf = null; }
+    aEls.micOverlay.style.display = 'grid';
+    aEls.micToggle.textContent = '마이크 켜기';
+    aEls.capture.disabled = true;
+    aEls.liveDot.classList.remove('on');
+    audioStopInfer();
+    return;
+  }
+  try {
+    audio.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audio.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = audio.audioCtx.createMediaStreamSource(audio.micStream);
+    audio.analyser = audio.audioCtx.createAnalyser();
+    audio.analyser.fftSize = 2048;
+    src.connect(audio.analyser);
+    aEls.micOverlay.style.display = 'none';
+    aEls.micToggle.textContent = '마이크 끄기';
+    aEls.capture.disabled = false;
+    aEls.liveDot.classList.add('on');
+    audioWaveformLoop();
+  } catch (e) {
+    aEls.micOverlay.innerHTML = '<div><div class="ph" style="color:#ef4444">MIC DENIED</div><div class="ph-msg">마이크 권한을 확인하세요</div></div>';
+  }
+}
+
+function audioWaveformLoop() {
+  if (!audio.analyser) return;
+  const cv = aEls.waveform;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  const buf = new Uint8Array(audio.analyser.fftSize);
+  audio.analyser.getByteTimeDomainData(buf);
+  ctx.clearRect(0, 0, w, h);
+  ctx.lineWidth = 2; ctx.strokeStyle = '#06b6d4'; ctx.beginPath();
+  const slice = w / buf.length;
+  for (let i = 0; i < buf.length; i++) {
+    const v = buf[i] / 128.0; const y = (v * h) / 2;
+    if (i === 0) ctx.moveTo(i * slice, y); else ctx.lineTo(i * slice, y);
+  }
+  ctx.stroke();
+  audio.wfRaf = requestAnimationFrame(audioWaveformLoop);
+}
+
+async function audioCapture() {
+  const sel = audio.classes.find(c => c.id === audio.selectedId);
+  if (!sel || !audio.base) return;
+  if (!audio.transfer) {
+    audio.transfer = audio.base.createTransfer('eddie-audio');
+  }
+  aEls.capture.disabled = true;
+  const oldText = aEls.capture.textContent;
+  aEls.capture.textContent = '녹음 중...';
+  try {
+    await audio.transfer.collectExample(String(sel.id));
+    sel.count++;
+    audioRenderClasses(); audioRefresh();
+  } catch (e) { console.error('[audio] collect fail:', e); }
+  aEls.capture.disabled = !audio.micStream;
+  aEls.capture.textContent = oldText;
+}
+
+async function audioTrain() {
+  if (!audio.transfer) return;
+  const counts = audio.classes.filter(c => c.count > 0);
+  if (counts.length < 2) return;
+  aEls.train.disabled = true; aEls.inferToggle.disabled = true;
+  const epochs = Math.max(5, Math.min(100, +aEls.epochs.value || 25));
+  try {
+    await audio.transfer.train({
+      epochs,
+      callback: {
+        onEpochEnd: async (ep, logs) => {
+          const p = Math.round(((ep + 1) / epochs) * 100);
+          aEls.trainBar.style.width = p + '%';
+          aEls.mEpoch.textContent = (ep + 1) + ' / ' + epochs;
+          aEls.mLoss.textContent = logs.loss.toFixed(3);
+          const acc = logs.acc ?? logs.accuracy;
+          aEls.mAcc.textContent = acc != null ? Math.round(acc * 100) + '%' : '—';
+        },
+      },
+    });
+    audio.trained = true;
+    aEls.train.disabled = false;
+    aEls.inferToggle.disabled = !audio.micStream;
+    aEls.trainHint.textContent = '학습 완료. 우측 [추론 시작]을 누르세요.';
+    audioRenderBars();
+  } catch (e) {
+    console.error('[audio] train fail:', e);
+    aEls.trainHint.textContent = '학습 실패: 각 단어당 최소 8회 녹음이 필요합니다.';
+    aEls.train.disabled = false;
+  }
+}
+
+function audioRenderBars() {
+  aEls.bars.innerHTML = '';
+  audio.classes.forEach((c, i) => {
+    const row = document.createElement('div'); row.className = 'bar-row';
+    row.innerHTML =
+      `<div class="bar-head">
+         <span class="bar-name"><span class="dot" style="background:${c.color}"></span>${c.name}</span>
+         <span class="bar-pct" id="a-pct-${i}">0%</span>
+       </div>
+       <div class="bar-track"><div class="bar-fill" id="a-fill-${i}" style="background:${c.color}"></div></div>`;
+    aEls.bars.appendChild(row);
+  });
+}
+
+async function audioStartInfer() {
+  if (!audio.trained || !audio.transfer) return;
+  audio.inferring = true;
+  aEls.inferToggle.textContent = '추론 중지';
+  aEls.inferMeta.textContent = 'LIVE';
+  const labels = audio.transfer.wordLabels();
+  await audio.transfer.listen(result => {
+    const scores = Array.from(result.scores);
+    const idToIdx = {};
+    audio.classes.forEach((c, i) => { idToIdx[String(c.id)] = i; });
+    audio.classes.forEach((c, i) => {
+      const li = labels.indexOf(String(c.id));
+      const pct = li >= 0 ? Math.round(scores[li] * 100) : 0;
+      const pctEl = $('a-pct-'+i); const fillEl = $('a-fill-'+i);
+      if (pctEl) pctEl.textContent = pct + '%';
+      if (fillEl) fillEl.style.width = pct + '%';
+    });
+    let topI = 0, topV = 0;
+    audio.classes.forEach((c, i) => {
+      const li = labels.indexOf(String(c.id));
+      if (li >= 0 && scores[li] > topV) { topV = scores[li]; topI = i; }
+    });
+    if (topV > 0.5) {
+      aEls.topPred.className = 'top-pred active';
+      aEls.topPred.querySelector('.tp-name').textContent = audio.classes[topI].name;
+      aEls.topPred.querySelector('.tp-conf').textContent = Math.round(topV*100) + '%';
+    }
+  }, { probabilityThreshold: 0.5, overlapFactor: 0.5 });
+}
+async function audioStopInfer() {
+  audio.inferring = false;
+  aEls.inferToggle.textContent = '추론 시작';
+  aEls.inferMeta.textContent = 'IDLE';
+  if (audio.transfer && audio.transfer.isListening()) {
+    try { await audio.transfer.stopListening(); } catch {}
+  }
+  aEls.topPred.className = 'top-pred idle';
+  aEls.topPred.querySelector('.tp-name').textContent = audio.trained ? '대기 중' : '아직 학습 전';
+  aEls.topPred.querySelector('.tp-conf').textContent = '';
+}
+
+function audioRefresh() {
+  const counts = audio.classes.filter(c => c.count > 0);
+  aEls.train.disabled = counts.length < 2 || counts.some(c => c.count < 3);
+  audioRenderBars();
+}
+
+/* ============================================================
+   ▌ 사전학습 추론 — 객체 탐지 (COCO-SSD)
+   ============================================================ */
+const detect = { model: null, stream: null, raf: null, lastT: 0 };
+const dEls = {
+  video: $('d-webcam'), overlay: $('d-overlay'), camOverlay: $('d-cam-overlay'),
+  camToggle: $('d-cam-toggle'), list: $('d-list'),
+  status: $('d-status'), fps: $('d-fps'), count: $('d-count'),
+};
+
+async function detectInit() {
+  dEls.camToggle.addEventListener('click', detectToggle);
+}
+async function detectToggle() {
+  if (detect.stream) {
+    detect.stream.getTracks().forEach(t => t.stop());
+    detect.stream = null; dEls.video.srcObject = null;
+    if (detect.raf) cancelAnimationFrame(detect.raf);
+    dEls.camOverlay.style.display = 'grid';
+    dEls.camToggle.textContent = '카메라 켜기 · 탐지 시작';
+    dEls.status.textContent = 'IDLE'; dEls.fps.textContent = '—';
+    dEls.list.innerHTML = ''; dEls.count.textContent = '0';
+    const ctx = dEls.overlay.getContext('2d');
+    ctx.clearRect(0, 0, dEls.overlay.width, dEls.overlay.height);
+    return;
+  }
+  if (!window.cocoSsd) { console.error('[detect] cocoSsd missing'); return; }
+  dEls.status.textContent = 'LOADING';
+  try {
+    if (!detect.model) detect.model = await cocoSsd.load();
+    detect.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    dEls.video.srcObject = detect.stream;
+    dEls.camOverlay.style.display = 'none';
+    dEls.camToggle.textContent = '카메라 끄기';
+    dEls.status.textContent = 'LIVE';
+    detect.lastT = performance.now();
+    detectLoop();
+  } catch (e) { console.error('[detect] fail:', e); dEls.status.textContent = 'ERROR'; }
+}
+async function detectLoop() {
+  if (!detect.stream || !detect.model) return;
+  if (dEls.video.readyState >= 2) {
+    const vw = dEls.video.videoWidth, vh = dEls.video.videoHeight;
+    dEls.overlay.width = vw; dEls.overlay.height = vh;
+    try {
+      const preds = await detect.model.detect(dEls.video);
+      const ctx = dEls.overlay.getContext('2d');
+      ctx.clearRect(0, 0, vw, vh);
+      ctx.font = 'bold 16px JetBrains Mono';
+      preds.forEach(p => {
+        const [x, y, w, h] = p.bbox;
+        ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, w, h);
+        const label = `${p.class} ${Math.round(p.score*100)}%`;
+        const tw = ctx.measureText(label).width;
+        ctx.fillStyle = '#00ff88';
+        ctx.fillRect(x, y - 20, tw + 10, 20);
+        ctx.fillStyle = '#000'; ctx.fillText(label, x + 5, y - 5);
+      });
+      dEls.count.textContent = preds.length;
+      dEls.list.innerHTML = preds.slice(0, 8).map(p =>
+        `<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;padding:6px 10px;background:var(--panel-soft);border:1px solid var(--border);border-radius:4px">
+          <span>${p.class}</span><span style="color:var(--blue)">${Math.round(p.score*100)}%</span>
+        </div>`).join('');
+      const now = performance.now();
+      const fps = 1000 / (now - detect.lastT); detect.lastT = now;
+      dEls.fps.textContent = fps.toFixed(1);
+    } catch (e) { /* skip frame */ }
+  }
+  detect.raf = requestAnimationFrame(detectLoop);
+}
+
+/* ============================================================
+   ▌ 사전학습 추론 — 인물 분리 (BodyPix)
+   ============================================================ */
+const seg = { net: null, stream: null, raf: null, mode: 'remove', lastT: 0 };
+const sEls = {
+  video: $('s-webcam'), canvas: $('s-canvas'), camOverlay: $('s-cam-overlay'),
+  camToggle: $('s-cam-toggle'), modeToggle: $('s-mode-toggle'),
+  status: $('s-status'), fps: $('s-fps'),
+  personPx: $('s-person-px'), ratio: $('s-ratio'),
+};
+async function segmentInit() {
+  sEls.camToggle.addEventListener('click', segmentToggle);
+  sEls.modeToggle.addEventListener('click', () => {
+    seg.mode = seg.mode === 'remove' ? 'highlight' : 'remove';
+    sEls.modeToggle.textContent = seg.mode === 'remove' ? '인물 강조' : '배경 제거';
+  });
+}
+async function segmentToggle() {
+  if (seg.stream) {
+    seg.stream.getTracks().forEach(t => t.stop());
+    seg.stream = null; sEls.video.srcObject = null;
+    if (seg.raf) cancelAnimationFrame(seg.raf);
+    sEls.camOverlay.style.display = 'grid';
+    sEls.camToggle.textContent = '카메라 켜기 · 분리 시작';
+    sEls.status.textContent = 'IDLE';
+    const ctx = sEls.canvas.getContext('2d');
+    ctx.clearRect(0, 0, sEls.canvas.width, sEls.canvas.height);
+    return;
+  }
+  if (!window.bodyPix) { console.error('[seg] bodyPix missing'); return; }
+  sEls.status.textContent = 'LOADING';
+  try {
+    if (!seg.net) seg.net = await bodyPix.load({ architecture: 'MobileNetV1', outputStride: 16, multiplier: 0.75 });
+    seg.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    sEls.video.srcObject = seg.stream;
+    sEls.camOverlay.style.display = 'none';
+    sEls.camToggle.textContent = '카메라 끄기';
+    sEls.status.textContent = 'LIVE';
+    seg.lastT = performance.now();
+    segmentLoop();
+  } catch (e) { console.error('[seg] fail:', e); sEls.status.textContent = 'ERROR'; }
+}
+async function segmentLoop() {
+  if (!seg.stream || !seg.net) return;
+  if (sEls.video.readyState >= 2) {
+    const vw = sEls.video.videoWidth, vh = sEls.video.videoHeight;
+    sEls.canvas.width = vw; sEls.canvas.height = vh;
+    try {
+      const segmentation = await seg.net.segmentPerson(sEls.video, { internalResolution: 'medium', segmentationThreshold: 0.6 });
+      const ctx = sEls.canvas.getContext('2d');
+      ctx.drawImage(sEls.video, 0, 0, vw, vh);
+      const img = ctx.getImageData(0, 0, vw, vh);
+      const data = img.data; const mask = segmentation.data;
+      let personPx = 0;
+      for (let i = 0; i < mask.length; i++) {
+        if (mask[i] === 1) {
+          personPx++;
+          if (seg.mode === 'highlight') {
+            data[i*4]   = Math.min(255, data[i*4]   * 0.5 + 0);
+            data[i*4+1] = Math.min(255, data[i*4+1] * 0.5 + 100);
+            data[i*4+2] = Math.min(255, data[i*4+2] * 0.5 + 200);
+          }
+        } else {
+          if (seg.mode === 'remove') {
+            data[i*4] = 20; data[i*4+1] = 24; data[i*4+2] = 35;
+          }
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      const total = mask.length;
+      sEls.personPx.textContent = personPx.toLocaleString();
+      sEls.ratio.textContent = (personPx * 100 / total).toFixed(1) + '%';
+      const now = performance.now();
+      const fps = 1000 / (now - seg.lastT); seg.lastT = now;
+      sEls.fps.textContent = fps.toFixed(1);
+    } catch (e) { /* skip */ }
+  }
+  seg.raf = requestAnimationFrame(segmentLoop);
+}
+
+/* ============================================================
+   ▌ 사전학습 추론 — 깊이 추정 (AR Portrait Depth)
+   ============================================================ */
+const depth = { estimator: null, stream: null, raf: null, lastT: 0 };
+const zEls = {
+  video: $('z-webcam'), canvas: $('z-canvas'), camOverlay: $('z-cam-overlay'),
+  camToggle: $('z-cam-toggle'),
+  status: $('z-status'), fps: $('z-fps'), min: $('z-min'), max: $('z-max'),
+};
+async function depthInit() {
+  zEls.camToggle.addEventListener('click', depthToggle);
+}
+async function depthToggle() {
+  if (depth.stream) {
+    depth.stream.getTracks().forEach(t => t.stop());
+    depth.stream = null; zEls.video.srcObject = null;
+    if (depth.raf) cancelAnimationFrame(depth.raf);
+    zEls.camOverlay.style.display = 'grid';
+    zEls.camToggle.textContent = '카메라 켜기 · 깊이 시작';
+    zEls.status.textContent = 'IDLE';
+    const ctx = zEls.canvas.getContext('2d');
+    ctx.clearRect(0, 0, zEls.canvas.width, zEls.canvas.height);
+    return;
+  }
+  if (!window.depthEstimation) { console.error('[depth] depthEstimation missing'); zEls.status.textContent = 'NOT AVAILABLE'; return; }
+  zEls.status.textContent = 'LOADING';
+  try {
+    if (!depth.estimator) {
+      depth.estimator = await depthEstimation.createEstimator(
+        depthEstimation.SupportedModels.ARPortraitDepth,
+        { minDepth: 0, maxDepth: 1 }
+      );
+    }
+    depth.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    zEls.video.srcObject = depth.stream;
+    zEls.camOverlay.style.display = 'none';
+    zEls.camToggle.textContent = '카메라 끄기';
+    zEls.status.textContent = 'LIVE';
+    depth.lastT = performance.now();
+    depthLoop();
+  } catch (e) { console.error('[depth] fail:', e); zEls.status.textContent = 'ERROR'; }
+}
+async function depthLoop() {
+  if (!depth.stream || !depth.estimator) return;
+  if (zEls.video.readyState >= 2) {
+    const vw = zEls.video.videoWidth, vh = zEls.video.videoHeight;
+    zEls.canvas.width = vw; zEls.canvas.height = vh;
+    try {
+      const d = await depth.estimator.estimateDepth(zEls.video, { minDepth: 0, maxDepth: 1 });
+      const depthCanvas = await d.toCanvasImageSource();
+      const ctx = zEls.canvas.getContext('2d');
+      ctx.drawImage(depthCanvas, 0, 0, vw, vh);
+      const now = performance.now();
+      const fps = 1000 / (now - depth.lastT); depth.lastT = now;
+      zEls.fps.textContent = fps.toFixed(1);
+      zEls.min.textContent = '0.0 (가까움)';
+      zEls.max.textContent = '1.0 (멈)';
+    } catch (e) { /* skip */ }
+  }
+  depth.raf = requestAnimationFrame(depthLoop);
+}
+
 /* ── 추론 ───────────────────────────────────────────── */
 function renderBars() {
   const names = state.head?._classNames || state.classes.map(c => ({ name: c.name, color: c.color }));
@@ -1385,15 +2604,47 @@ els.capture.addEventListener('touchstart', (e) => { e.preventDefault(); startHol
 window.addEventListener('mouseup', endHold);
 window.addEventListener('touchend', endHold);
 
+/* 탭/서브탭을 떠날 때 활성 카메라·마이크·추론 루프를 일괄 정리.
+   각 toggle 함수는 "켜져 있으면 끈다"는 토글 구조이므로,
+   활성 상태일 때만 호출하면 기존 teardown 로직(트랙 stop·RAF cancel)을 그대로 재사용한다. */
+function stopAllActivity() {
+  if (state.stream)    toggleCam();        // 이미지: 카메라 + stopInfer
+  if (pose.stream)     poseToggleCam();    // 동작: 카메라 + 추론 + 오버레이 루프
+  if (audio.micStream) audioToggleMic();   // 음성: 마이크 + 파형 루프 + stopInfer
+  if (audio.inferring) audioStopInfer();   // 음성 추론(listen)은 마이크와 독립이라 별도 정리
+  if (detect.stream)   detectToggle();     // 객체 탐지
+  if (seg.stream)      segmentToggle();    // 인물 분리
+  if (depth.stream)    depthToggle();      // 깊이 추정
+}
+
 document.querySelectorAll('.main-tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     const target = tab.dataset.tab;
+    stopAllActivity();
     document.querySelectorAll('.main-tab').forEach((t) => t.classList.toggle('active', t === tab));
     document.querySelectorAll('.tab-panel').forEach((p) => {
       p.classList.toggle('active', p.id === 'panel-' + target);
     });
   });
 });
+
+document.querySelectorAll('.sub-tab').forEach((tab) => {
+  tab.addEventListener('click', () => {
+    if (tab.classList.contains('disabled')) return;
+    const target = tab.dataset.sub;
+    stopAllActivity();
+    const parent = tab.closest('.tab-panel');
+    parent.querySelectorAll('.sub-tab').forEach((t) => t.classList.toggle('active', t === tab));
+    parent.querySelectorAll('.sub-panel').forEach((p) => {
+      const isTarget = p.id === 'sub-' + target;
+      p.classList.toggle('active', isTarget);
+      p.style.display = isTarget ? '' : 'none';
+    });
+  });
+});
+
+window.addEventListener('mouseup', poseEndHold);
+window.addEventListener('touchend', poseEndHold);
 
 document.getElementById('gallery-close').addEventListener('click', closeGallery);
 document.getElementById('gallery-overlay').addEventListener('click', (e) => {
@@ -1404,6 +2655,11 @@ document.addEventListener('keydown', (e) => {
 });
 
 init();
+poseInit();
+audioInit();
+detectInit();
+segmentInit();
+depthInit();
 </script>
 </body>
 </html>

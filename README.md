@@ -12,7 +12,7 @@
 - **브라우저 완결** — 학습·추론·데이터 보관 모두 사용자 브라우저에서 수행
 - **서버 부담 0** — 정적 파일 1개만 서빙되면 동작. EC2/RDS 불필요
 - **개인정보 안전** — 학습 이미지·모델 가중치가 서버로 전송되지 않음
-- **확장 자리 마련** — 학습 종류 탭 4개(이미지/텍스트/숫자/음성), 현재는 이미지 활성
+- **3개 학습 탭** — ① 이미지 분류 ② 동작·음성 학습 ③ 사전학습 모델 추론 (모두 활성)
 
 ---
 
@@ -29,7 +29,11 @@
 
 ## 기술 스택
 
-- **ML** — TensorFlow.js 4.x, MobileNet v2 (α=1.0, ImageNet 사전학습)
+- **ML 런타임** — TensorFlow.js 4.x (WebGL 백엔드)
+- **이미지** — MobileNet v2 (α=1.0, ImageNet) 특징 추출 + 분류 헤드
+- **동작** — MoveNet(pose-detection) 키포인트 + 분류 헤드
+- **음성** — Speech Commands 전이학습
+- **사전학습 추론** — COCO-SSD(객체 탐지) · BodyPix(인물 분리) · Depth Estimation(깊이)
 - **분류 헤드** — Dense(100, ReLU) → Dropout(0.2) → Dense(N, Softmax), Adam(lr=0.001)
 - **UI** — HTML / CSS / JavaScript 단일 파일, Pretendard + JetBrains Mono
 - **호스팅** — 정적 파일 호스팅 어디든 (S3+CloudFront, FastAPI, nginx 등)
@@ -111,10 +115,9 @@ eduino-ml-trainer/
 
 ## 향후 확장
 
-학습 종류 탭에 자리만 마련된 텍스트·숫자·음성 분류도, 같은 전이학습 패턴(frozen 인코더 + 학습 헤드)을 그대로 적용해 확장 가능합니다.
+현재 이미지·동작·음성 분류와 사전학습 추론(탐지/분리/깊이)이 구현돼 있습니다. 같은 전이학습 패턴(frozen 인코더 + 학습 헤드)으로 다음을 추가할 수 있습니다.
 
 - 텍스트 — Universal Sentence Encoder + 분류 헤드
-- 음성 — Speech Commands 모델 + 분류 헤드
 - 숫자 예측 — 직접 정의한 선형 회귀 또는 작은 MLP
 
 ---
