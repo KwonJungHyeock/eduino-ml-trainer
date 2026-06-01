@@ -111,6 +111,23 @@ test('추론 1틱이 막대와 최상위 예측을 갱신한다 (이미지 탭)'
   assert.ok(tpName.length > 0, '최상위 예측 이름이 표시됨');
 });
 
+test('음성 녹음 관리 모달: 목록 표시 + 개별 삭제', async () => {
+  const { window, doc } = await loadApp();
+  doc.querySelector('.main-tab[data-tab="supervised"]').click();
+  doc.querySelector('#panel-supervised .sub-tab[data-sub="audio"]').click();
+  // 첫 음성 클래스 선택 후 2회 녹음
+  doc.querySelectorAll('#a-class-list .class-item')[0].click();
+  await window.audioCapture();
+  await window.audioCapture();
+  // 카운트 배지 클릭 → 녹음 모달 열림
+  doc.querySelector('#a-class-list .class-item .class-count').click();
+  assert.equal(doc.getElementById('audio-rec-overlay').classList.contains('on'), true);
+  assert.equal(doc.querySelectorAll('#audio-rec-grid .gallery-item').length, 2, '녹음 2개 표시');
+  // 하나 삭제 → 1개 남음
+  doc.querySelector('#audio-rec-grid .gallery-item').click();
+  assert.equal(doc.querySelectorAll('#audio-rec-grid .gallery-item').length, 1, '삭제 후 1개');
+});
+
 test('회귀: 카메라 켠 상태에서 탭 전환 시 스트림이 정지된다 (stopAllActivity)', async () => {
   const { window, doc } = await loadApp();
   await window.toggleCam(); // 이미지 탭 카메라 시작 → 가짜 스트림 생성

@@ -12,7 +12,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.5.4/dist/speech-commands.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.2.0/dist/body-pix.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/depth-estimation@0.1.0/dist/depth-estimation.min.js"></script>
 
 <!-- 폰트: Pretendard (한국어 본문) + JetBrains Mono (텔레메트리 데이터) -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
@@ -632,6 +631,7 @@
   }
   .gallery-item:hover { border-color: var(--rose); }
   .gallery-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .gallery-item canvas { width: 100%; height: 100%; display: block; background: #0a0e1a; }
   .gallery-item .del-mark {
     position: absolute; inset: 0; background: rgba(225, 29, 72, 0.85);
     color: #fff; display: none; align-items: center; justify-content: center;
@@ -752,7 +752,7 @@
     </div>
     <div class="mt-text">
       <span class="mt-name">사전학습 추론</span>
-      <span class="mt-sub">DETECT · SEGMENT · DEPTH</span>
+      <span class="mt-sub">DETECT · SEGMENT</span>
     </div>
     <span class="mt-badge">INFER</span>
   </div>
@@ -1148,12 +1148,6 @@
         </svg>
         인물 분리
       </button>
-      <button class="sub-tab" data-sub="depth">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 6l9-3 9 3M3 6v12l9 3M3 6l9 3M12 9v12M21 6l-9 3M21 6v12l-9 3"/>
-        </svg>
-        깊이 추정
-      </button>
     </div>
 
     <!-- ─── 객체 탐지 ─── -->
@@ -1173,7 +1167,7 @@
         <div class="card stage-card">
           <div class="video-wrap">
             <video id="d-webcam" autoplay playsinline muted></video>
-            <canvas id="d-overlay" class="pose-overlay"></canvas>
+            <canvas id="d-overlay" class="pose-overlay" style="transform:none"></canvas>
             <div class="video-overlay" id="d-cam-overlay">
               <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 객체가 탐지됩니다</div></div>
             </div>
@@ -1207,7 +1201,7 @@
       <section>
         <div class="card stage-card">
           <div class="video-wrap">
-            <video id="s-webcam" autoplay playsinline muted style="display:none"></video>
+            <video id="s-webcam" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>
             <canvas id="s-canvas" style="position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)"></canvas>
             <div class="video-overlay" id="s-cam-overlay">
               <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 인물만 분리됩니다</div></div>
@@ -1232,43 +1226,6 @@
     </div>
 
     <!-- ─── 깊이 추정 ─── -->
-    <div id="sub-depth" class="sub-panel" style="display:none">
-      <aside class="card">
-        <div class="card-h"><span class="label">MODEL</span><span class="meta">AR PORTRAIT</span></div>
-        <div class="card-b">
-          <p class="hint" style="margin:0 0 12px">단일 카메라로 <b>깊이(거리)</b>를 추정합니다. 가까울수록 밝게, 멀수록 어둡게 표시됩니다. (인물 포함 장면에 최적)</p>
-          <div class="metrics" style="margin-top:8px">
-            <div><span class="k">MODE</span><span class="v">AR DEPTH</span></div>
-            <div><span class="k">STATUS</span><span class="v" id="z-status">IDLE</span></div>
-            <div><span class="k">FPS</span><span class="v" id="z-fps">—</span></div>
-          </div>
-        </div>
-      </aside>
-      <section>
-        <div class="card stage-card">
-          <div class="video-wrap">
-            <video id="z-webcam" autoplay playsinline muted style="display:none"></video>
-            <canvas id="z-canvas" style="position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)"></canvas>
-            <div class="video-overlay" id="z-cam-overlay">
-              <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 깊이가 표시됩니다</div></div>
-            </div>
-          </div>
-          <div class="cam-controls">
-            <button class="btn primary" id="z-cam-toggle" style="width:100%">카메라 켜기 · 깊이 시작</button>
-          </div>
-        </div>
-      </section>
-      <aside class="card">
-        <div class="card-h"><span class="label">INFO</span><span class="meta" id="z-meta">—</span></div>
-        <div class="card-b">
-          <p class="hint" style="margin:0">⚠ 첫 로드 시 모델(~30MB) 다운로드. 인물이 화면에 있을 때 가장 잘 동작합니다.</p>
-          <div class="metrics" style="grid-template-columns:1fr;margin-top:12px">
-            <div><span class="k">최소 깊이 (밝음)</span><span class="v" id="z-min">—</span></div>
-            <div style="margin-top:8px"><span class="k">최대 깊이 (어두움)</span><span class="v" id="z-max">—</span></div>
-          </div>
-        </div>
-      </aside>
-    </div>
   </div>
   <!-- ╚═════════════ /사전학습 추론 ═════════════╝ -->
 </main>
@@ -1286,6 +1243,23 @@
     </div>
     <div class="gallery-body">
       <div class="gallery-grid" id="gallery-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────── 음성 녹음 관리 모달 ──────────────────────── -->
+<div class="gallery-overlay" id="audio-rec-overlay">
+  <div class="gallery-modal">
+    <div class="gallery-head">
+      <div class="gallery-title">
+        <span class="dot" id="audio-rec-dot"></span>
+        <span id="audio-rec-name">—</span>
+        <span class="count" id="audio-rec-count">0</span>
+      </div>
+      <button class="gallery-close" id="audio-rec-close" aria-label="닫기">✕</button>
+    </div>
+    <div class="gallery-body">
+      <div class="gallery-grid" id="audio-rec-grid"></div>
     </div>
   </div>
 </div>
@@ -1679,6 +1653,66 @@ function closeGallery() {
   document.getElementById('gallery-overlay').classList.remove('on');
 }
 
+/* ── 음성 녹음 관리 (스펙트로그램 썸네일 + 삭제) ─────────── */
+/* speech-commands 녹음은 오디오가 아닌 스펙트로그램이라 재생은 불가하고,
+   썸네일로 확인 + uid 기반 개별 삭제만 제공한다. */
+function drawSpectrogram(canvas, spec) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#0a0e1a'; ctx.fillRect(0, 0, W, H);
+  if (!spec || !spec.data || !spec.frameSize) return;
+  const data = spec.data, fs = spec.frameSize;
+  const frames = Math.floor(data.length / fs);
+  if (frames <= 0) return;
+  let mn = Infinity, mx = -Infinity;
+  for (let k = 0; k < data.length; k++) { const v = data[k]; if (v < mn) mn = v; if (v > mx) mx = v; }
+  const range = (mx - mn) || 1;
+  const img = ctx.createImageData(W, H);
+  for (let px = 0; px < W; px++) {
+    const f = Math.min(frames - 1, Math.floor(px / W * frames));
+    for (let py = 0; py < H; py++) {
+      const bin = Math.min(fs - 1, Math.floor((1 - py / H) * fs)); // 낮은 주파수를 아래로
+      const v = (data[f * fs + bin] - mn) / range; // 0..1
+      const idx = (py * W + px) * 4;
+      img.data[idx] = 20; img.data[idx + 1] = Math.round(v * 200); img.data[idx + 2] = Math.round(60 + v * 195); img.data[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function openAudioRec(classId) {
+  const c = audio.classes.find(x => x.id === classId);
+  if (!c) return;
+  $('audio-rec-dot').style.background = c.color;
+  $('audio-rec-name').textContent = c.name;
+  const exs = audio.transfer ? audio.transfer.getExamples(String(c.id)) : [];
+  $('audio-rec-count').textContent = exs.length + ' 개';
+  const grid = $('audio-rec-grid');
+  if (exs.length === 0) {
+    grid.innerHTML = '<div class="gallery-empty" style="grid-column:1/-1">아직 녹음이 없습니다. 마이크를 켜고 [녹음]을 눌러 수집하세요.</div>';
+  } else {
+    grid.innerHTML = exs.map((ex, i) =>
+      `<div class="gallery-item" data-uid="${ex.uid}" title="녹음 ${i + 1}">
+        <canvas class="rec-spec" width="120" height="72"></canvas>
+        <div class="del-mark">삭제</div>
+      </div>`
+    ).join('');
+    grid.querySelectorAll('.rec-spec').forEach((cv, i) => drawSpectrogram(cv, exs[i].example.spectrogram));
+    grid.querySelectorAll('.gallery-item').forEach(el => {
+      el.addEventListener('click', () => {
+        audio.transfer.removeExample(el.dataset.uid);
+        c.count = audio.transfer.countExamples()[String(c.id)] || 0;
+        openAudioRec(classId);
+        audioRenderClasses(); audioRefresh();
+      });
+    });
+  }
+  $('audio-rec-overlay').classList.add('on');
+}
+function closeAudioRec() {
+  document.getElementById('audio-rec-overlay').classList.remove('on');
+}
+
 /* ============================================================
    ▌ 포즈 인식 (지도학습)
    ─ MoveNet keypoint extraction + Dense classifier
@@ -2038,6 +2072,9 @@ function audioRenderClasses() {
     row.appendChild(input);
     const count = document.createElement('span');
     count.className = 'class-count'; count.textContent = c.count;
+    count.style.cursor = 'pointer';
+    count.title = '녹음 보기·삭제';
+    count.onclick = (e) => { e.stopPropagation(); audioSelectClass(c.id); openAudioRec(c.id); };
     row.appendChild(count);
     const del = document.createElement('button');
     del.className = 'class-del'; del.textContent = '✕'; del.title = '삭제';
@@ -2256,13 +2293,14 @@ async function detectLoop() {
       ctx.font = 'bold 16px JetBrains Mono';
       preds.forEach(p => {
         const [x, y, w, h] = p.bbox;
+        const mx = vw - x - w; // 비디오가 좌우 반전 표시되므로 박스 X 좌표만 반전(텍스트는 정상 유지)
         ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 3;
-        ctx.strokeRect(x, y, w, h);
+        ctx.strokeRect(mx, y, w, h);
         const label = `${p.class} ${Math.round(p.score*100)}%`;
         const tw = ctx.measureText(label).width;
         ctx.fillStyle = '#00ff88';
-        ctx.fillRect(x, y - 20, tw + 10, 20);
-        ctx.fillStyle = '#000'; ctx.fillText(label, x + 5, y - 5);
+        ctx.fillRect(mx, y - 20, tw + 10, 20);
+        ctx.fillStyle = '#000'; ctx.fillText(label, mx + 5, y - 5);
       });
       dEls.count.textContent = preds.length;
       dEls.list.innerHTML = preds.slice(0, 8).map(p =>
@@ -2580,8 +2618,12 @@ document.getElementById('gallery-close').addEventListener('click', closeGallery)
 document.getElementById('gallery-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'gallery-overlay') closeGallery();
 });
+document.getElementById('audio-rec-close').addEventListener('click', closeAudioRec);
+document.getElementById('audio-rec-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'audio-rec-overlay') closeAudioRec();
+});
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeGallery();
+  if (e.key === 'Escape') { closeGallery(); closeAudioRec(); }
 });
 
 init();
@@ -2589,7 +2631,7 @@ poseInit();
 audioInit();
 detectInit();
 segmentInit();
-depthInit();
+// depthInit(); // 깊이 추정(ARPortraitDepth)은 실험적·불안정으로 탭 숨김 처리 (JS는 휴면)
 </script>
 </body>
 </html>

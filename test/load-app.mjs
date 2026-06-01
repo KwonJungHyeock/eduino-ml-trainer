@@ -91,12 +91,39 @@ export async function loadApp() {
         }),
       };
 
+      // Speech Commands 스텁: 녹음 예제를 word 별로 메모리에 보관(uid 기반 삭제 지원)
+      window.speechCommands = {
+        create: () => {
+          const examples = {};
+          let uidSeq = 0;
+          const transfer = {
+            collectExample: async (word) => {
+              (examples[word] = examples[word] || []).push({
+                uid: 'u' + (++uidSeq),
+                example: { spectrogram: { data: new Float32Array(43 * 232), frameSize: 232 } },
+              });
+            },
+            countExamples: () => Object.fromEntries(Object.entries(examples).map(([w, a]) => [w, a.length])),
+            getExamples: (word) => examples[word] || [],
+            removeExample: (uid) => { for (const w in examples) examples[w] = examples[w].filter((e) => e.uid !== uid); },
+            train: async (opts) => {
+              const ep = opts.epochs || 1;
+              for (let i = 0; i < ep; i++) opts.callback && opts.callback.onEpochEnd && (await opts.callback.onEpochEnd(i, { loss: 1 / (i + 1), acc: 0.6 }));
+            },
+            listen: async () => {}, stopListening: async () => {}, isListening: () => false,
+            wordLabels: () => Object.keys(examples),
+          };
+          return { ensureModelLoaded: async () => {}, createTransfer: () => transfer };
+        },
+      };
+
       // jsdom 은 canvas 2d 컨텍스트를 구현하지 않으므로(썸네일·오버레이용) 최소 stub
       const ctx2d = {
         clearRect() {}, drawImage() {}, beginPath() {}, moveTo() {}, lineTo() {},
         stroke() {}, arc() {}, fill() {}, fillRect() {}, strokeRect() {}, fillText() {},
         measureText: () => ({ width: 0 }),
         getImageData: () => ({ data: new Uint8ClampedArray(0) }),
+        createImageData: (w, h) => ({ data: new Uint8ClampedArray((w | 0) * (h | 0) * 4) }),
         putImageData() {},
       };
       window.HTMLCanvasElement.prototype.getContext = () => ctx2d;

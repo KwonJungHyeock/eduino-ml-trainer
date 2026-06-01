@@ -33,7 +33,7 @@
 - **이미지** — MobileNet v2 (α=1.0, ImageNet) 특징 추출 + 분류 헤드
 - **동작** — MoveNet(pose-detection) 키포인트 + 분류 헤드
 - **음성** — Speech Commands 전이학습
-- **사전학습 추론** — COCO-SSD(객체 탐지) · BodyPix(인물 분리) · Depth Estimation(깊이)
+- **사전학습 추론** — COCO-SSD(객체 탐지) · BodyPix(인물 분리)
 - **분류 헤드** — Dense(100, ReLU) → Dropout(0.2) → Dense(N, Softmax), Adam(lr=0.001)
 - **UI** — HTML / CSS / JavaScript 단일 파일, Pretendard + JetBrains Mono
 - **호스팅** — 정적 파일 호스팅 어디든 (S3+CloudFront, FastAPI, nginx 등)
@@ -133,7 +133,7 @@ eduino-ml-trainer/
 
 ## 향후 확장
 
-현재 이미지·동작·음성 분류와 사전학습 추론(탐지/분리/깊이)이 구현돼 있습니다. 같은 전이학습 패턴(frozen 인코더 + 학습 헤드)으로 다음을 추가할 수 있습니다.
+현재 이미지·동작·음성 분류와 사전학습 추론(객체 탐지/인물 분리)이 구현돼 있습니다. 같은 전이학습 패턴(frozen 인코더 + 학습 헤드)으로 다음을 추가할 수 있습니다.
 
 - 텍스트 — Universal Sentence Encoder + 분류 헤드
 - 숫자 예측 — 직접 정의한 선형 회귀 또는 작은 MLP
