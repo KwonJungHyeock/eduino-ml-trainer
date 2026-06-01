@@ -129,6 +129,20 @@ test('음성 녹음 관리 모달: 목록 표시 + 개별 삭제', async () => {
   assert.equal(doc.querySelectorAll('#audio-rec-grid .gallery-item').length, 1, '삭제 후 1개');
 });
 
+test('영상 필터: 모드 버튼이 비디오에 CSS 필터를 적용한다', async () => {
+  const { window, doc } = await loadApp();
+  doc.querySelector('.nav-item[data-feature="filter"]').click();
+  assert.equal(doc.getElementById('panel-pretrained').classList.contains('active'), true);
+  assert.equal(doc.getElementById('sub-filter').classList.contains('active'), true);
+  // 흑백 모드 → grayscale 필터
+  doc.querySelector('.ff-mode[data-fmode="gray"]').click();
+  assert.equal(doc.getElementById('ff-webcam').style.filter, 'grayscale(1)');
+  assert.equal(doc.getElementById('ff-mode-name').textContent, '흑백');
+  // 원본 모드 → 필터 해제
+  doc.querySelector('.ff-mode[data-fmode="none"]').click();
+  assert.equal(doc.getElementById('ff-webcam').style.filter, '');
+});
+
 test('회귀: 카메라 켠 상태에서 탭 전환 시 스트림이 정지된다 (stopAllActivity)', async () => {
   const { window, doc } = await loadApp();
   await window.toggleCam(); // 이미지 탭 카메라 시작 → 가짜 스트림 생성

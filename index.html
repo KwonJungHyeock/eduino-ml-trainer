@@ -815,6 +815,12 @@
         </svg>
         인물 분리
       </button>
+      <button class="nav-item" data-feature="filter">
+        <svg class="ni-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/>
+        </svg>
+        영상 필터
+      </button>
     </div>
   </nav>
 
@@ -1298,7 +1304,53 @@
       </aside>
     </div>
 
-    <!-- ─── 깊이 추정 ─── -->
+    <!-- ─── 영상 필터 · 모션 ─── -->
+    <div id="sub-filter" class="sub-panel" style="display:none">
+      <aside class="card">
+        <div class="card-h"><span class="label">필터</span><span class="meta">CANVAS</span></div>
+        <div class="card-b">
+          <p class="hint" style="margin:0 0 12px">고전 영상처리 효과를 실시간으로 적용합니다. 버튼으로 모드를 바꿔보세요.</p>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button class="btn ghost ff-mode active" data-fmode="none">원본</button>
+            <button class="btn ghost ff-mode" data-fmode="gray">흑백</button>
+            <button class="btn ghost ff-mode" data-fmode="invert">색 반전</button>
+            <button class="btn ghost ff-mode" data-fmode="contrast">고대비 (윤곽)</button>
+            <button class="btn ghost ff-mode" data-fmode="blur">블러</button>
+            <button class="btn ghost ff-mode" data-fmode="motion">모션 감지</button>
+          </div>
+        </div>
+      </aside>
+      <section style="display:flex;flex-direction:column;gap:14px">
+        <div class="card stage-card">
+          <div class="video-wrap">
+            <video id="ff-webcam" autoplay playsinline muted></video>
+            <canvas id="ff-canvas" class="pose-overlay"></canvas>
+            <div class="video-overlay" id="ff-cam-overlay">
+              <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 필터가 적용됩니다</div></div>
+            </div>
+          </div>
+          <div class="cam-controls">
+            <button class="btn primary" id="ff-cam-toggle" style="width:100%">카메라 켜기</button>
+          </div>
+        </div>
+      </section>
+      <aside class="card">
+        <div class="card-h"><span class="label">INFO</span><span class="meta" id="ff-mode-name">원본</span></div>
+        <div class="card-b">
+          <div class="metrics" style="grid-template-columns:1fr 1fr">
+            <div><span class="k">STATUS</span><span class="v" id="ff-status">IDLE</span></div>
+            <div><span class="k">FPS</span><span class="v" id="ff-fps">—</span></div>
+          </div>
+          <div style="margin-top:14px">
+            <div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);display:flex;justify-content:space-between">
+              <span>MOTION</span><span id="ff-motion" style="color:var(--ink-2)">—</span>
+            </div>
+            <div class="gauge"><div class="gauge-fill" id="ff-motion-bar" style="background:linear-gradient(90deg,#e11d48,#f59e0b)"></div></div>
+          </div>
+          <p class="hint" style="margin-top:12px">흑백·색반전·고대비·블러는 즉시 적용됩니다. <b>모션 감지</b>는 움직이는 부분을 빨갛게 표시합니다 — "멈추기 게임"에 활용해 보세요.</p>
+        </div>
+      </aside>
+    </div>
   </div>
   <!-- ╚═════════════ /사전학습 추론 ═════════════╝ -->
 </main>
@@ -2480,6 +2532,112 @@ async function segmentLoop() {
 }
 
 /* ============================================================
+   ▌ 영상처리 — 영상 필터 (CSS 필터) + 모션 감지 (프레임 차분)
+   ============================================================ */
+const ff = { stream: null, raf: null, mode: 'none', prev: null, lastT: 0 };
+const ffEls = {
+  video: $('ff-webcam'), canvas: $('ff-canvas'), camOverlay: $('ff-cam-overlay'),
+  camToggle: $('ff-cam-toggle'), status: $('ff-status'), fps: $('ff-fps'),
+  motion: $('ff-motion'), motionBar: $('ff-motion-bar'), modeName: $('ff-mode-name'),
+};
+const FF_CSS = { none: '', gray: 'grayscale(1)', invert: 'invert(1)', contrast: 'grayscale(1) contrast(4) brightness(1.1)', blur: 'blur(6px)' };
+const FF_LABEL = { none: '원본', gray: '흑백', invert: '색 반전', contrast: '고대비', blur: '블러', motion: '모션 감지' };
+
+function ffClearCanvas() {
+  const ctx = ffEls.canvas.getContext('2d');
+  ctx.clearRect(0, 0, ffEls.canvas.width, ffEls.canvas.height);
+}
+function ffResetMotion() {
+  ff.prev = null;
+  if (ffEls.motion) ffEls.motion.textContent = '—';
+  if (ffEls.motionBar) ffEls.motionBar.style.width = '0%';
+}
+
+function setFilterMode(mode) {
+  if (!FF_LABEL[mode]) return;
+  ff.mode = mode;
+  document.querySelectorAll('.ff-mode').forEach((b) => b.classList.toggle('active', b.dataset.fmode === mode));
+  ffEls.modeName.textContent = FF_LABEL[mode];
+  if (mode === 'motion') {
+    ffEls.video.style.filter = '';
+    ffClearCanvas();
+    if (ff.stream) { if (ff.raf) cancelAnimationFrame(ff.raf); motionLoop(); }
+  } else {
+    if (ff.raf) cancelAnimationFrame(ff.raf);
+    ff.raf = null;
+    ffEls.video.style.filter = FF_CSS[mode];
+    ffClearCanvas();
+    ffResetMotion();
+  }
+}
+
+async function filterToggle() {
+  if (ff.stream) {
+    ff.stream.getTracks().forEach((t) => t.stop());
+    ff.stream = null; ffEls.video.srcObject = null;
+    if (ff.raf) cancelAnimationFrame(ff.raf); ff.raf = null;
+    ffEls.video.style.filter = '';
+    ffClearCanvas(); ffResetMotion();
+    ffEls.camOverlay.style.display = 'grid';
+    ffEls.camToggle.textContent = '카메라 켜기';
+    ffEls.status.textContent = 'IDLE'; ffEls.fps.textContent = '—';
+    return;
+  }
+  try {
+    ff.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    ffEls.video.srcObject = ff.stream;
+    await ffEls.video.play().catch(() => {});
+    ffEls.camOverlay.style.display = 'none';
+    ffEls.camToggle.textContent = '카메라 끄기';
+    ffEls.status.textContent = 'LIVE';
+    setFilterMode(ff.mode); // 현재 모드 적용 (CSS 필터 or 모션 루프 시작)
+  } catch (e) {
+    ffEls.camOverlay.innerHTML = '<div><div class="ph" style="color:#ef4444">CAMERA DENIED</div><div class="ph-msg">브라우저 카메라 권한을 확인하세요</div></div>';
+  }
+}
+
+/* 모션 감지: tf.browser.fromPixels 로 프레임을 읽어(가려진 비디오에서도 안전한 WebGL 경로)
+   이전 프레임과의 밝기 차이가 큰 픽셀을 빨갛게 오버레이로 표시한다. */
+async function motionLoop() {
+  if (ff.mode !== 'motion' || !ff.stream) return;
+  if (ffEls.video.readyState >= 2 && window.tf) {
+    const W = 160, H = 120;
+    try {
+      const gray = tf.tidy(() => tf.image.resizeBilinear(tf.browser.fromPixels(ffEls.video), [H, W]).mean(2));
+      const cur = await gray.data(); gray.dispose();
+      if (ff.prev && ff.prev.length === cur.length) {
+        ffEls.canvas.width = W; ffEls.canvas.height = H;
+        const ctx = ffEls.canvas.getContext('2d');
+        const img = ctx.createImageData(W, H);
+        let moved = 0;
+        for (let i = 0; i < cur.length; i++) {
+          const o = i * 4;
+          if (Math.abs(cur[i] - ff.prev[i]) > 22) {
+            moved++;
+            img.data[o] = 255; img.data[o + 1] = 40; img.data[o + 2] = 70; img.data[o + 3] = 160;
+          }
+        }
+        ctx.putImageData(img, 0, 0);
+        const pct = moved * 100 / cur.length;
+        ffEls.motion.textContent = pct.toFixed(1) + '%';
+        ffEls.motionBar.style.width = Math.min(100, pct * 3).toFixed(0) + '%';
+      }
+      ff.prev = cur;
+      const now = performance.now();
+      ffEls.fps.textContent = (1000 / (now - ff.lastT)).toFixed(1); ff.lastT = now;
+    } catch (e) { /* skip frame */ }
+  }
+  ff.raf = requestAnimationFrame(motionLoop);
+}
+
+function filterInit() {
+  ffEls.camToggle.addEventListener('click', filterToggle);
+  document.querySelectorAll('.ff-mode').forEach((b) => {
+    b.addEventListener('click', () => setFilterMode(b.dataset.fmode));
+  });
+}
+
+/* ============================================================
    ▌ 사전학습 추론 — 깊이 추정 (AR Portrait Depth)
    ============================================================ */
 const depth = { estimator: null, stream: null, raf: null, lastT: 0 };
@@ -2666,6 +2824,7 @@ function stopAllActivity() {
   if (audio.inferring) audioStopInfer();   // 음성 추론(listen)은 마이크와 독립이라 별도 정리
   if (detect.stream)   detectToggle();     // 객체 탐지
   if (seg.stream)      segmentToggle();    // 인물 분리
+  if (ff.stream)       filterToggle();     // 영상 필터/모션
   if (depth.stream)    depthToggle();      // 깊이 추정
 }
 
@@ -2677,6 +2836,7 @@ const FEATURES = {
   audio:   { name: '음성 분류',   panel: 'panel-supervised', sub: 'sub-audio', type: '전이학습',           model: 'Speech Commands', desc: '짧은 음성 명령을 녹음해 단어를 분류합니다.' },
   detect:  { name: '객체 탐지',   panel: 'panel-pretrained', sub: 'sub-detect',  type: '사전학습 추론', model: 'COCO-SSD', desc: '추가 학습 없이 90종 사물을 실시간으로 박스 탐지합니다.' },
   segment: { name: '인물 분리',   panel: 'panel-pretrained', sub: 'sub-segment', type: '사전학습 추론', model: 'BodyPix',  desc: '사람과 배경을 픽셀 단위로 분리합니다(얼굴 인식·분류가 아닙니다).' },
+  filter:  { name: '영상 필터',   panel: 'panel-pretrained', sub: 'sub-filter',  type: '영상처리 알고리즘', model: 'Canvas · 프레임 차분', desc: '흑백·색반전·고대비·블러 필터와 모션 감지를 실시간으로 체험합니다.' },
 };
 
 function selectFeature(key) {
@@ -2722,6 +2882,7 @@ poseInit();
 audioInit();
 detectInit();
 segmentInit();
+filterInit();
 // depthInit(); // 깊이 추정(ARPortraitDepth)은 실험적·불안정으로 탭 숨김 처리 (JS는 휴면)
 
 selectFeature('image'); // 좌측 사이드바 초기 선택
