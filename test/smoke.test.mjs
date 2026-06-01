@@ -40,6 +40,18 @@ test('메인 탭 전환 시 패널이 토글된다', async () => {
   assert.equal(doc.getElementById('panel-direct').classList.contains('active'), false);
 });
 
+test('학습 곡선(pushChartPoint)이 polyline 좌표를 누적해 그린다', async () => {
+  const { window, doc } = await loadApp();
+  window.pushChartPoint(1, 5, 0.80, 0.40); // (ep, totalEp, loss, acc)
+  window.pushChartPoint(2, 5, 0.40, 0.70);
+  const acc = doc.getElementById('chart-acc').getAttribute('points');
+  const loss = doc.getElementById('chart-loss').getAttribute('points');
+  // 2개 점이 누적되어 "x,y x,y" 형태로 그려져야 함
+  assert.equal(acc.trim().split(/\s+/).length, 2, 'acc polyline 점 2개');
+  assert.equal(loss.trim().split(/\s+/).length, 2, 'loss polyline 점 2개');
+  assert.match(acc, /^[\d.]+,[\d.]+\s+[\d.]+,[\d.]+$/);
+});
+
 test('회귀: 카메라 켠 상태에서 탭 전환 시 스트림이 정지된다 (stopAllActivity)', async () => {
   const { window, doc } = await loadApp();
   await window.toggleCam(); // 이미지 탭 카메라 시작 → 가짜 스트림 생성

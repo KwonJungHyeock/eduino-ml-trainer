@@ -1388,12 +1388,15 @@ function removeClass(id) {
 }
 function selectClass(id) { state.selectedId = id; renderClasses(); }
 
-function renderClasses() {
-  els.classList.innerHTML = '';
-  state.classes.forEach(c => {
+/* 클래스 목록 렌더 공통 로직 — 이미지/동작 탭이 콜백·상수·갤러리 연동만 다르고
+   DOM 구조가 동일하므로 cfg 로 주입받아 재사용한다. onThumbs 가 없으면(동작 탭)
+   썸네일 클릭 갤러리를 달지 않는다. */
+function renderClassList(cfg) {
+  cfg.container.innerHTML = '';
+  cfg.classes.forEach(c => {
     const div = document.createElement('div');
-    div.className = 'class-item' + (c.id === state.selectedId ? ' selected' : '');
-    div.onclick = () => selectClass(c.id);
+    div.className = 'class-item' + (c.id === cfg.selectedId ? ' selected' : '');
+    div.onclick = () => cfg.onSelect(c.id);
 
     const row = document.createElement('div');
     row.className = 'class-row';
@@ -1401,8 +1404,8 @@ function renderClasses() {
 
     const input = document.createElement('input');
     input.className = 'class-name'; input.value = c.name;
-    input.onclick = (e) => { e.stopPropagation(); selectClass(c.id); };
-    input.oninput = () => { c.name = input.value || c.name; renderBars(); updateCapTarget(); };
+    input.onclick = (e) => { e.stopPropagation(); cfg.onSelect(c.id); };
+    input.oninput = () => { c.name = input.value || c.name; cfg.onRename(); };
     row.appendChild(input);
 
     const count = document.createElement('span');
@@ -1411,15 +1414,14 @@ function renderClasses() {
 
     const del = document.createElement('button');
     del.className = 'class-del'; del.textContent = '✕'; del.title = '삭제';
-    del.onclick = (e) => { e.stopPropagation(); removeClass(c.id); };
+    del.onclick = (e) => { e.stopPropagation(); cfg.onRemove(c.id); };
     row.appendChild(del);
 
     div.appendChild(row);
 
     if (c.thumbs.length) {
       const t = document.createElement('div'); t.className = 'thumbs';
-      t.style.cursor = 'pointer';
-      t.title = '클릭해서 갤러리 열기';
+      if (cfg.onThumbs) { t.style.cursor = 'pointer'; t.title = '클릭해서 갤러리 열기'; }
       c.thumbs.slice(-6).forEach(src => {
         const im = document.createElement('img'); im.src = src; t.appendChild(im);
       });
@@ -1427,17 +1429,29 @@ function renderClasses() {
         const m = document.createElement('span'); m.className = 'more';
         m.textContent = '+' + (c.embeddings.length - 6); t.appendChild(m);
       }
-      t.addEventListener('click', (e) => {
-        e.stopPropagation();
-        selectClass(c.id);
-        openGallery(c.id);
-      });
+      if (cfg.onThumbs) {
+        t.addEventListener('click', (e) => {
+          e.stopPropagation();
+          cfg.onSelect(c.id);
+          cfg.onThumbs(c.id);
+        });
+      }
       div.appendChild(t);
     }
-    els.classList.appendChild(div);
+    cfg.container.appendChild(div);
   });
-  els.classCountMeta.textContent = state.classes.length + ' / ' + MAX_CLASSES;
-  els.addClass.disabled = state.classes.length >= MAX_CLASSES;
+  cfg.countMeta.textContent = cfg.classes.length + ' / ' + cfg.max;
+  cfg.addBtn.disabled = cfg.classes.length >= cfg.max;
+}
+
+function renderClasses() {
+  renderClassList({
+    container: els.classList, classes: state.classes, selectedId: state.selectedId,
+    max: MAX_CLASSES, countMeta: els.classCountMeta, addBtn: els.addClass,
+    onSelect: selectClass, onRemove: removeClass,
+    onRename: () => { renderBars(); updateCapTarget(); },
+    onThumbs: openGallery,
+  });
   updateCapTarget();
 }
 
@@ -1551,20 +1565,24 @@ function resetChart() {
   document.getElementById('chart-loss').setAttribute('points', '');
   document.getElementById('chart-acc').setAttribute('points', '');
 }
-function pushChartPoint(ep, totalEp, loss, acc) {
-  chartHistory.loss.push(loss);
-  chartHistory.acc.push(acc != null ? acc : 0);
+/* 학습 곡선(정확도/손실) SVG polyline 좌표 계산 공통 로직.
+   hist 누적 배열과 대상 polyline 엘리먼트만 탭별로 다르다. */
+function drawChart(hist, accEl, lossEl, totalEp, loss, acc) {
+  hist.loss.push(loss);
+  hist.acc.push(acc != null ? acc : 0);
   const W = 400, H = 110, padL = 24, padR = 6, padT = 8, padB = 18;
   const plotW = W - padL - padR, plotH = H - padT - padB;
-  const n = chartHistory.loss.length;
-  const maxLoss = Math.max(0.1, ...chartHistory.loss);
+  const n = hist.loss.length;
+  const maxLoss = Math.max(0.1, ...hist.loss);
   const xOf = (i) => padL + (n === 1 ? plotW / 2 : (i / (totalEp - 1)) * plotW);
   const yAcc = (v) => padT + plotH * (1 - Math.max(0, Math.min(1, v)));
   const yLoss = (v) => padT + plotH * (1 - v / maxLoss);
-  const accPts = chartHistory.acc.map((v, i) => xOf(i) + ',' + yAcc(v)).join(' ');
-  const lossPts = chartHistory.loss.map((v, i) => xOf(i) + ',' + yLoss(v)).join(' ');
-  document.getElementById('chart-acc').setAttribute('points', accPts);
-  document.getElementById('chart-loss').setAttribute('points', lossPts);
+  accEl.setAttribute('points', hist.acc.map((v, i) => xOf(i) + ',' + yAcc(v)).join(' '));
+  lossEl.setAttribute('points', hist.loss.map((v, i) => xOf(i) + ',' + yLoss(v)).join(' '));
+}
+
+function pushChartPoint(ep, totalEp, loss, acc) {
+  drawChart(chartHistory, $('chart-acc'), $('chart-loss'), totalEp, loss, acc);
 }
 
 /* ── 혼동 행렬 (학습 데이터 self-prediction) ──────────── */
@@ -1706,47 +1724,13 @@ function poseRemoveClass(id) {
 function poseSelectClass(id) { pose.selectedId = id; poseRenderClasses(); }
 
 function poseRenderClasses() {
-  pEls.classList.innerHTML = '';
-  pose.classes.forEach(c => {
-    const div = document.createElement('div');
-    div.className = 'class-item' + (c.id === pose.selectedId ? ' selected' : '');
-    div.onclick = () => poseSelectClass(c.id);
-
-    const row = document.createElement('div');
-    row.className = 'class-row';
-    row.innerHTML = `<span class="class-dot" style="background:${c.color}"></span>`;
-
-    const input = document.createElement('input');
-    input.className = 'class-name'; input.value = c.name;
-    input.onclick = (e) => { e.stopPropagation(); poseSelectClass(c.id); };
-    input.oninput = () => { c.name = input.value || c.name; poseRenderBars(); poseUpdateCapTarget(); };
-    row.appendChild(input);
-
-    const count = document.createElement('span');
-    count.className = 'class-count'; count.textContent = c.embeddings.length;
-    row.appendChild(count);
-
-    const del = document.createElement('button');
-    del.className = 'class-del'; del.textContent = '✕'; del.title = '삭제';
-    del.onclick = (e) => { e.stopPropagation(); poseRemoveClass(c.id); };
-    row.appendChild(del);
-    div.appendChild(row);
-
-    if (c.thumbs.length) {
-      const t = document.createElement('div'); t.className = 'thumbs';
-      c.thumbs.slice(-6).forEach(src => {
-        const im = document.createElement('img'); im.src = src; t.appendChild(im);
-      });
-      if (c.embeddings.length > 6) {
-        const m = document.createElement('span'); m.className = 'more';
-        m.textContent = '+' + (c.embeddings.length - 6); t.appendChild(m);
-      }
-      div.appendChild(t);
-    }
-    pEls.classList.appendChild(div);
+  renderClassList({
+    container: pEls.classList, classes: pose.classes, selectedId: pose.selectedId,
+    max: POSE_MAX_CLASSES, countMeta: pEls.classCountMeta, addBtn: pEls.addClass,
+    onSelect: poseSelectClass, onRemove: poseRemoveClass,
+    onRename: () => { poseRenderBars(); poseUpdateCapTarget(); },
+    onThumbs: null,  // 동작 탭은 갤러리 없음
   });
-  pEls.classCountMeta.textContent = pose.classes.length + ' / ' + POSE_MAX_CLASSES;
-  pEls.addClass.disabled = pose.classes.length >= POSE_MAX_CLASSES;
   poseUpdateCapTarget();
 }
 
@@ -1930,17 +1914,7 @@ function poseResetChart() {
   pEls.chartLoss.setAttribute('points', '');
 }
 function posePushChartPoint(ep, totalEp, loss, acc) {
-  poseChartHist.loss.push(loss);
-  poseChartHist.acc.push(acc != null ? acc : 0);
-  const W = 400, H = 110, padL = 24, padR = 6, padT = 8, padB = 18;
-  const plotW = W - padL - padR, plotH = H - padT - padB;
-  const n = poseChartHist.loss.length;
-  const maxLoss = Math.max(0.1, ...poseChartHist.loss);
-  const xOf = (i) => padL + (n === 1 ? plotW / 2 : (i / (totalEp - 1)) * plotW);
-  const yAcc = (v) => padT + plotH * (1 - Math.max(0, Math.min(1, v)));
-  const yLoss = (v) => padT + plotH * (1 - v / maxLoss);
-  pEls.chartAcc.setAttribute('points', poseChartHist.acc.map((v,i)=>xOf(i)+','+yAcc(v)).join(' '));
-  pEls.chartLoss.setAttribute('points', poseChartHist.loss.map((v,i)=>xOf(i)+','+yLoss(v)).join(' '));
+  drawChart(poseChartHist, pEls.chartAcc, pEls.chartLoss, totalEp, loss, acc);
 }
 
 async function poseBuildConfusion(xs, ys, usable) {
@@ -1974,17 +1948,7 @@ async function poseBuildConfusion(xs, ys, usable) {
 
 function poseRenderBars() {
   const names = pose.head?._classNames || pose.classes.map(c => ({ name: c.name, color: c.color }));
-  pEls.bars.innerHTML = '';
-  names.forEach((c, i) => {
-    const row = document.createElement('div'); row.className = 'bar-row';
-    row.innerHTML =
-      `<div class="bar-head">
-         <span class="bar-name"><span class="dot" style="background:${c.color}"></span>${c.name}</span>
-         <span class="bar-pct" id="p-pct-${i}">0%</span>
-       </div>
-       <div class="bar-track"><div class="bar-fill" id="p-fill-${i}" style="background:${c.color}"></div></div>`;
-    pEls.bars.appendChild(row);
-  });
+  renderProbBars(pEls.bars, names, (i) => `p-pct-${i}`, (i) => `p-fill-${i}`);
 }
 
 function poseResetTopPred() {
@@ -2227,17 +2191,7 @@ async function audioTrain() {
 }
 
 function audioRenderBars() {
-  aEls.bars.innerHTML = '';
-  audio.classes.forEach((c, i) => {
-    const row = document.createElement('div'); row.className = 'bar-row';
-    row.innerHTML =
-      `<div class="bar-head">
-         <span class="bar-name"><span class="dot" style="background:${c.color}"></span>${c.name}</span>
-         <span class="bar-pct" id="a-pct-${i}">0%</span>
-       </div>
-       <div class="bar-track"><div class="bar-fill" id="a-fill-${i}" style="background:${c.color}"></div></div>`;
-    aEls.bars.appendChild(row);
-  });
+  renderProbBars(aEls.bars, audio.classes, (i) => `a-pct-${i}`, (i) => `a-fill-${i}`);
 }
 
 async function audioStartInfer() {
@@ -2502,19 +2456,25 @@ async function depthLoop() {
 }
 
 /* ── 추론 ───────────────────────────────────────────── */
-function renderBars() {
-  const names = state.head?._classNames || state.classes.map(c => ({ name: c.name, color: c.color }));
-  els.bars.innerHTML = '';
+/* 신뢰도 막대 렌더 공통 로직 — 탭마다 컨테이너와 DOM id 접두사만 다르다.
+   pctId/fillId 는 인덱스를 받아 추론 루프가 참조하는 id 문자열을 만든다. */
+function renderProbBars(container, names, pctId, fillId) {
+  container.innerHTML = '';
   names.forEach((c, i) => {
     const row = document.createElement('div'); row.className = 'bar-row';
     row.innerHTML =
       `<div class="bar-head">
          <span class="bar-name"><span class="dot" style="background:${c.color}"></span>${c.name}</span>
-         <span class="bar-pct" id="pct-${i}">0%</span>
+         <span class="bar-pct" id="${pctId(i)}">0%</span>
        </div>
-       <div class="bar-track"><div class="bar-fill" id="bar-${i}" style="background:${c.color}"></div></div>`;
-    els.bars.appendChild(row);
+       <div class="bar-track"><div class="bar-fill" id="${fillId(i)}" style="background:${c.color}"></div></div>`;
+    container.appendChild(row);
   });
+}
+
+function renderBars() {
+  const names = state.head?._classNames || state.classes.map(c => ({ name: c.name, color: c.color }));
+  renderProbBars(els.bars, names, (i) => `pct-${i}`, (i) => `bar-${i}`);
 }
 function resetTopPred() {
   els.topPred.className = 'top-pred idle';
