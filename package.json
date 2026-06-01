@@ -1,0 +1,12 @@
+{
+  "name": "eduino-ml-trainer",
+  "version": "1.0.0",
+  "description": "브라우저 완결형 교육용 ML 학습·추론 체험 (이미지/동작·음성/사전학습 3탭)",
+  "private": true,
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.0"
+  }
+}

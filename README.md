@@ -54,6 +54,19 @@ python -m http.server 8000
 
 ---
 
+## 테스트
+
+브라우저 없이 jsdom 으로 인라인 스크립트를 로드해 **DOM 참조 무결성·클래스 관리·탭 전환 라이프사이클**을 검증하는 스모크 테스트가 있습니다 (모델 추론 자체는 대상 아님).
+
+```bash
+npm install   # 최초 1회 (jsdom)
+npm test
+```
+
+`test/load-app.mjs` 가 CDN 모델 의존성 없이 앱을 로드하고, `test/smoke.test.mjs` 가 기본 동작과 회귀(탭 전환 시 카메라 스트림 정지)를 검증합니다.
+
+---
+
 ## AWS 배포
 
 기존 `eduino-web-tutor` (FastAPI · AWS) 에 정적 라우트로 통합하는 것이 가장 가벼운 방식입니다.

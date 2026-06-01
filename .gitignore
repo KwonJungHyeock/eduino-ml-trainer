@@ -1,2 +1,3 @@
-"*.docx" 
-*.bak 
+"*.docx"
+*.bak
+node_modules/
