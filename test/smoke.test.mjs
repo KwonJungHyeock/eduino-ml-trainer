@@ -161,6 +161,14 @@ test('StepNav 가 학습 진행에 따라 done 표시된다 (이미지)', async 
   assert.equal(pills()[2].classList.contains('done'), true);
 });
 
+test('추론 시 도넛 게이지(%)가 갱신된다 (이미지)', async () => {
+  const { window, doc } = await loadApp();
+  await trainImageTab(window, doc, { epochs: 3 });
+  window.startInfer();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.match(doc.getElementById('top-donut-pct').textContent, /\d+%/);
+});
+
 test('영상 필터 밝기 슬라이더가 CSS 필터에 실시간 반영된다', async () => {
   const { window, doc } = await loadApp();
   doc.querySelector('.nav-item[data-feature="filter"]').click();

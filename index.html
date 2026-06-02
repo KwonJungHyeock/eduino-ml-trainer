@@ -584,6 +584,19 @@
   .ff-mode:hover:not(.active) { border-color: var(--ink-4); color: var(--ink); }
   .ff-mode.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
 
+  /* 추론 결과 도넛 게이지 */
+  .donut { width: 132px; height: 132px; display: block; margin: 2px auto 6px; }
+  .donut-track { fill: none; stroke: var(--panel-soft); stroke-width: 12; }
+  .donut-arc {
+    fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round;
+    stroke-dasharray: 0 314.16; transform: rotate(-90deg); transform-origin: 60px 60px;
+    transition: stroke-dasharray .25s ease, stroke .25s;
+  }
+  .donut-pct {
+    font-family: var(--mono); font-size: 26px; font-weight: 700; fill: var(--ink);
+    text-anchor: middle; dominant-baseline: central;
+  }
+
   /* 영상처리 파라미터 슬라이더 */
   .param { margin-top: 4px; padding: 12px; background: var(--panel-soft); border: 1px solid var(--border); border-radius: 8px; }
   .param-label { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; color: var(--ink-2); margin-bottom: 8px; }
@@ -1063,7 +1076,12 @@
     </div>
     <div class="card-b">
       <div class="top-pred idle" id="top-pred">
-        <div class="tp-label">PREDICTION</div>
+        <svg class="donut" viewBox="0 0 120 120">
+          <circle class="donut-track" cx="60" cy="60" r="50"/>
+          <circle class="donut-arc" cx="60" cy="60" r="50" id="top-donut-arc"/>
+          <text class="donut-pct" x="60" y="60" id="top-donut-pct">0%</text>
+        </svg>
+        <div class="tp-label">지금 무엇으로 보이나요?</div>
         <div class="tp-name">아직 학습 전</div>
         <div class="tp-conf"></div>
       </div>
@@ -1200,7 +1218,12 @@
         </div>
         <div class="card-b">
           <div class="top-pred idle" id="p-top-pred">
-            <div class="tp-label">PREDICTION</div>
+            <svg class="donut" viewBox="0 0 120 120">
+              <circle class="donut-track" cx="60" cy="60" r="50"/>
+              <circle class="donut-arc" cx="60" cy="60" r="50" id="p-top-donut-arc"/>
+              <text class="donut-pct" x="60" y="60" id="p-top-donut-pct">0%</text>
+            </svg>
+            <div class="tp-label">지금 어떤 동작인가요?</div>
             <div class="tp-name">아직 학습 전</div>
             <div class="tp-conf"></div>
           </div>
@@ -2323,6 +2346,7 @@ function poseResetTopPred() {
   pEls.topPred.className = 'top-pred idle';
   pEls.topPred.querySelector('.tp-name').textContent = pose.trained ? '대기 중' : '아직 학습 전';
   pEls.topPred.querySelector('.tp-conf').textContent = '';
+  setDonut('p-top-donut', 0, 'var(--accent)');
 }
 
 async function poseInferLoop() {
@@ -2336,7 +2360,8 @@ async function poseInferLoop() {
     const topI = renderProbResults(out, names, (i) => `p-pct-${i}`, (i) => `p-fill-${i}`);
     pEls.topPred.className = 'top-pred active';
     pEls.topPred.querySelector('.tp-name').textContent = names[topI].name;
-    pEls.topPred.querySelector('.tp-conf').textContent = Math.round(out[topI]*100) + '%';
+    pEls.topPred.querySelector('.tp-conf').textContent = '확신도 ' + Math.round(out[topI]*100) + '%';
+    setDonut('p-top-donut', out[topI], names[topI].color);
   }
   requestAnimationFrame(poseInferLoop);
 }
@@ -3206,11 +3231,21 @@ function renderBars() {
   const names = state.head?._classNames || state.classes.map(c => ({ name: c.name, color: c.color }));
   renderProbBars(els.bars, names, (i) => `pct-${i}`, (i) => `bar-${i}`);
 }
+/* 추론 결과 도넛 게이지 갱신 (frac 0~1) */
+function setDonut(prefix, frac, color) {
+  const C = 314.16;
+  const arc = document.getElementById(prefix + '-arc');
+  const pct = document.getElementById(prefix + '-pct');
+  if (arc) { arc.style.strokeDasharray = (frac * C).toFixed(1) + ' ' + C; if (color) arc.style.stroke = color; }
+  if (pct) pct.textContent = Math.round(frac * 100) + '%';
+}
+
 function resetTopPred() {
   els.topPred.className = 'top-pred idle';
   els.topPred.querySelector('.tp-name').textContent = '아직 학습 전';
   els.topPred.querySelector('.tp-conf').textContent = '';
   els.topPred.querySelector('.tp-name').style.color = '';
+  setDonut('top-donut', 0, 'var(--accent)');
 }
 /* 추론 결과를 신뢰도 막대에 반영하고 최상위 클래스 인덱스를 돌려준다.
    특징 추출은 탭마다 다르지만 막대 갱신 로직은 공통이다. */
@@ -3238,7 +3273,8 @@ async function inferLoop() {
   els.topPred.className = 'top-pred';
   els.topPred.querySelector('.tp-name').textContent = names[topI].name;
   els.topPred.querySelector('.tp-name').style.color = names[topI].color;
-  els.topPred.querySelector('.tp-conf').textContent = '신뢰도 ' + Math.round(probs[topI] * 100) + '%';
+  els.topPred.querySelector('.tp-conf').textContent = '확신도 ' + Math.round(probs[topI] * 100) + '%';
+  setDonut('top-donut', probs[topI], names[topI].color);
 
   requestAnimationFrame(inferLoop);
 }
