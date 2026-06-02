@@ -138,6 +138,19 @@
   .status.live .led  { background: var(--cyan);  box-shadow: 0 0 0 3px rgba(6,182,212,.20); animation: blink 1.4s infinite; }
   @keyframes blink { 50% { opacity: .35; } }
 
+  /* 비보안 컨텍스트(카메라/마이크 차단) 경고 배너 */
+  .insecure-warn {
+    display: none;
+    background: #fff7ed; border-bottom: 1px solid #fed7aa;
+    color: #9a3412; font-size: 13px; line-height: 1.5;
+    padding: 10px 22px; text-align: center;
+  }
+  .insecure-warn b { color: #7c2d12; }
+  .insecure-warn code {
+    font-family: var(--mono); font-size: 12px;
+    background: #ffedd5; border: 1px solid #fed7aa; border-radius: 4px; padding: 1px 6px;
+  }
+
   /* ───────────────────────── 학습 종류 탭 ─────────────────────────── */
   .modes {
     max-width: 1320px; margin: 22px auto 14px; padding: 0 24px;
@@ -226,13 +239,15 @@
   .tab-panel.active { display: block; }
 
   /* ─────────── 좌측 사이드바 레이아웃 ─────────── */
-  .app-shell { display: grid; grid-template-columns: 224px minmax(0, 1fr); align-items: start; }
+  .app-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); align-items: start; }
   .sidebar {
     position: sticky; top: 0; align-self: start;
-    border-right: 1px solid var(--border); background: var(--panel);
+    border-right: 1px solid var(--border-strong);
+    background: linear-gradient(180deg, #eef1f6, #e8ecf3);
     padding: 20px 12px; min-height: calc(100vh - 57px);
   }
-  .nav-group { margin-bottom: 20px; }
+  .nav-group { margin-bottom: 16px; }
+  .nav-group + .nav-group { border-top: 1px solid var(--border); padding-top: 16px; }
   .nav-group-title {
     font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
     text-transform: uppercase; color: var(--ink-4); padding: 0 10px 8px;
@@ -252,7 +267,8 @@
 
   /* 기능 정보 요약 카드 */
   .feature-info {
-    background: var(--panel); border: 1px solid var(--border);
+    background: linear-gradient(135deg, #ffffff 0%, #eef4ff 100%);
+    border: 1px solid var(--border); border-left: 3px solid var(--blue);
     border-radius: var(--radius); box-shadow: var(--shadow-sm);
     padding: 14px 18px; margin-bottom: 16px;
   }
@@ -299,7 +315,7 @@
   .sub-panel { display: none; }
   .sub-panel.active {
     display: grid;
-    grid-template-columns: minmax(260px, 1fr) minmax(420px, 560px) minmax(300px, 1fr);
+    grid-template-columns: minmax(234px, 0.9fr) minmax(420px, 560px) minmax(300px, 1fr);
     gap: 16px;
   }
   @media (max-width: 1180px) { .sub-panel.active { grid-template-columns: 1fr; } }
@@ -809,6 +825,10 @@
     </div>
   </div>
 </header>
+
+<div id="insecure-warn" class="insecure-warn">
+  ⚠ 카메라·마이크는 <b>localhost</b> 또는 <b>HTTPS</b>에서만 동작합니다. 현재 주소(<code id="insecure-origin"></code>)에서는 권한 요청이 뜨지 않습니다 — <code>http://localhost:8000</code> 으로 접속하세요.
+</div>
 
 <!-- ────────────── 좌측 사이드바 + 콘텐츠 ────────────── -->
 <div class="app-shell">
@@ -2919,6 +2939,12 @@ filterInit();
 // depthInit(); // 깊이 추정(ARPortraitDepth)은 실험적·불안정으로 탭 숨김 처리 (JS는 휴면)
 
 selectFeature('image'); // 좌측 사이드바 초기 선택
+
+// 비보안 컨텍스트(예: LAN IP + HTTP)에서는 getUserMedia 가 권한 창 없이 차단됨 → 안내 배너
+if (!window.isSecureContext) {
+  const w = $('insecure-warn');
+  if (w) { w.style.display = 'block'; const o = $('insecure-origin'); if (o) o.textContent = location.host; }
+}
 </script>
 </body>
 </html>
