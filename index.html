@@ -5,9 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>EDUINO · AI 학습·추론 체험</title>
 
-<!-- TensorFlow.js + MobileNet -->
+<!-- TensorFlow.js + Models -->
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.5.4/dist/speech-commands.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.2.0/dist/body-pix.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.1.0/dist/blazeface.min.umd.js"></script>
 
 <!-- 폰트: Pretendard (한국어 본문) + JetBrains Mono (텔레메트리 데이터) -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
@@ -19,35 +24,42 @@
 <style>
   :root {
     /* ── 라이트 베이스 (SpaceX 콘솔 미학) ── */
-    --bg:           #f6f7f9;
-    --bg-grid:      rgba(15, 23, 42, 0.04);
-    --panel:        #ffffff;
-    --panel-soft:   #fafbfc;
-    --border:       #e3e6ea;
-    --border-strong:#cfd4d9;
+    /* ── 다크 베이스 ── */
+    --bg:           #0d1016;
+    --bg-grid:      rgba(255, 255, 255, 0.035);
+    --panel:        #161b24;
+    --panel-soft:   #1c222d;
+    --border:       #2a313f;
+    --border-strong:#3a4150;
 
-    /* 텍스트 위계 */
-    --ink:          #0a0e1a;     /* 텔레메트리 진한 본문 */
-    --ink-2:        #344155;
-    --ink-3:        #64748b;
-    --ink-4:        #94a3b8;
+    /* 텍스트 위계 (다크) */
+    --ink:          #eef1f6;
+    --ink-2:        #c3ccd9;
+    --ink-3:        #8c97a7;
+    --ink-4:        #5f6976;
 
     /* 액센트 */
-    --blue:         #0066ff;     /* 일렉트릭 블루 — 메인 액션 */
-    --blue-soft:    #e6efff;
-    --cyan:         #06b6d4;     /* 라이브/실행 표시 */
-    --green:        #059669;     /* 학습완료 */
-    --amber:        #d97706;     /* 추론 활성 */
-    --rose:         #e11d48;     /* 위험/삭제 */
+    --blue:         #4d8dff;     /* 데이터 시각화 */
+    --blue-soft:    rgba(77,141,255,.16);
+    --cyan:         #22c5e0;     /* 라이브/실행 표시 */
+    --green:        #2bb583;     /* 학습완료 */
+    --amber:        #e0913a;     /* 추론 활성 */
+    --rose:         #f0506e;     /* 위험/삭제 */
 
-    --shadow-sm:    0 1px 2px rgba(15,23,42,.04);
-    --shadow:       0 1px 3px rgba(15,23,42,.06), 0 4px 14px rgba(15,23,42,.04);
+    /* 메인 포인트 — 코랄 레드 */
+    --accent:       #f15a4f;
+    --accent-soft:  rgba(241,90,79,.16);
+    --accent-ink:   #ff9a8f;
 
-    --radius:       10px;
-    --radius-sm:    6px;
+    --shadow-sm:    0 1px 2px rgba(0,0,0,.35);
+    --shadow:       0 2px 8px rgba(0,0,0,.4), 0 8px 26px rgba(0,0,0,.32);
+
+    --radius:       12px;
+    --radius-sm:    8px;
 
     --sans: 'Pretendard', -apple-system, sans-serif;
-    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    /* 한글 글리프가 없는 JetBrains Mono 뒤에 Pretendard 폴백 → 한글 깨짐 방지 */
+    --mono: 'JetBrains Mono', 'Pretendard', ui-monospace, monospace;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -61,8 +73,8 @@
       linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px) 0 0 / 24px 24px,
       var(--bg);
     min-height: 100vh;
-    font-size: 15px;
-    line-height: 1.55;
+    font-size: 16px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     letter-spacing: -0.005em;
   }
@@ -70,28 +82,47 @@
   /* ───────────────────────────── 헤더 ────────────────────────────── */
   .topbar {
     position: sticky; top: 0; z-index: 50;
-    background: rgba(255,255,255,.85);
-    backdrop-filter: saturate(160%) blur(10px);
-    -webkit-backdrop-filter: saturate(160%) blur(10px);
-    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #1c2331 0%, #141a25 100%);
+    border-bottom: 1px solid var(--border-strong);
+    box-shadow: 0 4px 20px rgba(0,0,0,.35);
+  }
+  .topbar::after {
+    content: ''; display: block; height: 3px;
+    background: linear-gradient(90deg, var(--accent), #ff8a3d 38%, rgba(255,138,61,0) 78%);
   }
   .topbar-inner {
-    max-width: 1320px; margin: 0 auto; padding: 14px 24px;
+    max-width: none; margin: 0; padding: 18px 26px;
     display: flex; align-items: center; justify-content: space-between; gap: 16px;
   }
-  .logo {
-    display: flex; align-items: center; gap: 12px;
-  }
+  .logo { display: flex; align-items: center; gap: 13px; }
   .logo-mark {
-    width: 28px; height: 28px; border-radius: 7px;
-    background: var(--ink); display: grid; place-items: center;
-    color: #fff; font-family: var(--mono); font-weight: 600; font-size: 13px;
+    width: 44px; height: 44px; border-radius: 13px;
+    background: linear-gradient(160deg, #ff6a52, #e8392b);
+    display: grid; place-items: center;
+    color: #fff; font-family: var(--sans); font-weight: 800; font-size: 24px;
+    box-shadow: 0 4px 14px rgba(241,90,79,.5), inset 0 1px 0 rgba(255,255,255,.35);
   }
-  .logo-text {
-    font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.04em;
-    color: var(--ink-2); text-transform: uppercase;
+  .logo-titles { display: flex; flex-direction: column; gap: 3px; }
+  .logo-title {
+    font-family: var(--sans); font-size: 22px; font-weight: 800;
+    color: var(--ink); letter-spacing: -0.02em; line-height: 1.05;
   }
-  .logo-text b { color: var(--ink); font-weight: 600; }
+  .logo-title span { color: var(--accent); }
+  .logo-tag {
+    font-family: var(--sans); font-size: 12.5px; color: var(--ink-3); letter-spacing: 0;
+  }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .topbar-pills { display: flex; gap: 6px; }
+  .tb-pill {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .05em;
+    color: var(--ink-3); background: var(--panel-soft);
+    border: 1px solid var(--border); border-radius: 999px; padding: 5px 11px;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .tb-pill::before {
+    content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--green);
+  }
+  @media (max-width: 820px) { .topbar-pills, .logo-tag { display: none; } }
 
   .status {
     display: flex; align-items: center; gap: 10px;
@@ -108,6 +139,19 @@
   .status.ready .led { background: var(--green); box-shadow: 0 0 0 3px rgba(5,150,105,.18); }
   .status.live .led  { background: var(--cyan);  box-shadow: 0 0 0 3px rgba(6,182,212,.20); animation: blink 1.4s infinite; }
   @keyframes blink { 50% { opacity: .35; } }
+
+  /* 비보안 컨텍스트(카메라/마이크 차단) 경고 배너 */
+  .insecure-warn {
+    display: none;
+    background: #fff7ed; border-bottom: 1px solid #fed7aa;
+    color: #9a3412; font-size: 13px; line-height: 1.5;
+    padding: 10px 22px; text-align: center;
+  }
+  .insecure-warn b { color: #7c2d12; }
+  .insecure-warn code {
+    font-family: var(--mono); font-size: 12px;
+    background: #ffedd5; border: 1px solid #fed7aa; border-radius: 4px; padding: 1px 6px;
+  }
 
   /* ───────────────────────── 학습 종류 탭 ─────────────────────────── */
   .modes {
@@ -194,12 +238,138 @@
 
   /* ─────────── 탭 패널 (전환 영역) ─────────── */
   .tab-panel { display: none; }
-  .tab-panel.active {
-    display: grid;
-    grid-template-columns: 280px 1fr 320px;
-    gap: 14px;
+  .tab-panel.active { display: block; }
+
+  /* ─────────── 좌측 사이드바 레이아웃 ─────────── */
+  .app-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); align-items: start; }
+  .sidebar {
+    position: sticky; top: 0; align-self: start;
+    border-right: 1px solid var(--border-strong);
+    background: linear-gradient(180deg, #12161e, #0e1219);
+    padding: 20px 12px; min-height: calc(100vh - 81px);
   }
-  @media (max-width: 1180px) { .tab-panel.active { grid-template-columns: 1fr; } }
+  .nav-group { margin-bottom: 16px; }
+  .nav-group + .nav-group { border-top: 1px solid var(--border); padding-top: 16px; }
+  .nav-group-title {
+    font-family: var(--sans); font-size: 13.5px; font-weight: 700; letter-spacing: .01em;
+    color: var(--ink-2); padding: 4px 10px 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .nav-group-title::before {
+    content: ''; width: 3px; height: 14px; border-radius: 2px; background: var(--accent); flex: none;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    text-align: left; background: none; border: none; cursor: pointer;
+    padding: 10px; border-radius: 8px; margin-bottom: 2px;
+    font-family: var(--sans); font-size: 14.5px; font-weight: 500; color: var(--ink-2);
+    transition: .14s;
+  }
+  .nav-item:hover:not(.active):not(.disabled) { background: rgba(255,255,255,.05); color: var(--ink); }
+  .nav-item.active {
+    background: var(--accent-soft); color: var(--accent-ink); font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .nav-item.disabled { opacity: .5; cursor: not-allowed; }
+  .nav-item .ni-ic { width: 17px; height: 17px; flex: none; }
+  .ni-label { flex: 1; min-width: 0; }
+  .nav-badge {
+    font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .03em;
+    padding: 2px 6px; border-radius: 999px; flex: none;
+    background: var(--accent-soft); color: var(--accent-ink); border: 1px solid rgba(241,90,79,.35);
+  }
+  .nav-badge.soon { background: var(--panel-soft); color: var(--ink-4); border-color: var(--border); }
+  .content { padding: 20px 24px 56px; min-width: 0; }
+  .content main { max-width: none; margin: 0; padding: 0; }
+
+  /* 기능 정보 요약 카드 */
+  /* 단계 네비 (image2 탭 스타일 — 번호 뱃지 pill) */
+  .step-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .step-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 999px;
+    padding: 8px 15px 8px 8px; font-family: var(--sans); font-size: 14.5px; font-weight: 500;
+    color: var(--ink-3); cursor: pointer; transition: .14s;
+  }
+  .step-pill:hover:not(.active) { border-color: var(--ink-4); color: var(--ink-2); }
+  .step-pill.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .step-pill-num {
+    width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--panel-soft); border: 1px solid var(--border);
+    font-family: var(--mono); font-size: 11px; flex: none;
+  }
+  .step-pill.active .step-pill-num { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .step-sep { width: 12px; height: 1px; background: var(--border-strong); flex: none; }
+  /* 기존 패널 내부 단계바는 상단 StepNav 로 대체 */
+  .steps-bar { display: none; }
+
+  .feature-info {
+    background: linear-gradient(135deg, var(--panel) 0%, rgba(241,90,79,.12) 100%);
+    border: 1px solid var(--border); border-left: 3px solid var(--accent);
+    border-radius: var(--radius); box-shadow: var(--shadow-sm);
+    padding: 14px 18px; margin-bottom: 16px;
+  }
+  .fi-model { background: var(--accent-soft) !important; color: var(--accent-ink) !important; border-color: rgba(241,90,79,.35) !important; }
+  .fi-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .fi-name { font-size: 19px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+  .fi-type, .fi-model {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em;
+    padding: 3px 8px; border-radius: 5px; border: 1px solid var(--border);
+  }
+  .fi-type { background: var(--panel-soft); color: var(--ink-3); }
+  .fi-model { background: rgba(0,102,255,0.08); color: var(--blue); border-color: rgba(0,102,255,0.2); }
+  .fi-desc { margin: 8px 0 0; font-size: 14.5px; color: var(--ink-3); line-height: 1.5; }
+  .fi-theory { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .fi-tcard { background: rgba(255,255,255,.035); border: 1px solid var(--border); border-radius: 8px; padding: 11px 13px; }
+  .fi-th { font-family: var(--mono); font-size: 11.5px; letter-spacing: .05em; color: var(--accent-ink); margin-bottom: 6px; font-weight: 700; }
+  .fi-tcard p { margin: 0; font-size: 14px; color: var(--ink-2); line-height: 1.55; }
+  @media (max-width: 720px) { .fi-theory { grid-template-columns: 1fr; } }
+
+  @media (max-width: 1024px) {
+    .app-shell { grid-template-columns: 1fr; }
+    .sidebar { position: static; min-height: 0; border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  /* 서브 탭 → 좌측 사이드바로 대체되어 숨김 */
+  .sub-tabs {
+    display: none; gap: 6px; margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sub-tab {
+    background: none; border: none; padding: 10px 16px;
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--sans); font-size: 13.5px; font-weight: 500;
+    color: var(--ink-3); cursor: pointer; position: relative;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: .15s;
+  }
+  .sub-tab:hover:not(.disabled):not(.active) { color: var(--ink-2); }
+  .sub-tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+  .sub-tab.disabled { color: var(--ink-4); cursor: not-allowed; }
+  .sub-tab svg { width: 16px; height: 16px; }
+  .sub-badge {
+    font-family: var(--mono); font-size: 9px; font-weight: 500;
+    padding: 2px 6px; border-radius: 4px;
+    background: var(--panel-soft); color: var(--ink-4);
+    border: 1px solid var(--border); letter-spacing: 0.04em;
+  }
+
+  .sub-panel { display: none; }
+  .sub-panel.active {
+    display: grid;
+    grid-template-columns: minmax(234px, 0.9fr) minmax(420px, 560px) minmax(300px, 1fr);
+    gap: 16px;
+  }
+  @media (max-width: 1180px) { .sub-panel.active { grid-template-columns: 1fr; } }
+
+  /* 포즈 인식 - 키포인트 오버레이 캔버스 */
+  .video-wrap canvas.pose-overlay {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    transform: scaleX(-1);
+  }
 
   /* ─────────── 지도학습 placeholder ─────────── */
   .super-hero {
@@ -250,12 +420,21 @@
 
   .card {
     background: var(--panel); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow-sm);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+  }
+  /* 좌/우 영역에 은은한 배경 톤을 줘서 영역을 구분 (좌=쿨, 우=웜) */
+  .sub-panel.active > aside.card:first-child {
+    background: linear-gradient(180deg, #181d27 0%, #141923 100%);
+  }
+  .sub-panel.active > aside.card:last-child {
+    background: linear-gradient(180deg, #1d1714 0%, #181311 100%);
   }
   .card-h {
-    padding: 14px 16px 10px;
+    padding: 13px 16px 11px;
     display: flex; align-items: center; justify-content: space-between;
     border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.015));
+    border-radius: var(--radius) var(--radius) 0 0;
   }
   .card-h .label {
     font-family: var(--mono); font-size: 11px; font-weight: 500;
@@ -263,7 +442,7 @@
   }
   .card-h .label::before {
     content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-    background: var(--blue); margin-right: 8px; vertical-align: 1px;
+    background: var(--accent); margin-right: 8px; vertical-align: 1px;
   }
   .card-h .meta {
     font-family: var(--mono); font-size: 11px; color: var(--ink-4); letter-spacing: 0.04em;
@@ -313,11 +492,18 @@
   /* ──────────────────────── ② 카메라 / 단계 ───────────────────────── */
   /* 단계 인디케이터 — 카메라 박스 상단 통합 */
   .steps-bar {
-    display: flex; align-items: center;
+    display: none; align-items: center;
     padding: 12px 16px;
     border-bottom: 1px solid var(--border);
     background: var(--panel-soft);
     gap: 0;
+  }
+  /* 완료 단계 (상단 StepNav) */
+  .step-pill.done:not(.active) {
+    background: rgba(43,181,131,.14); border-color: var(--green); color: var(--green);
+  }
+  .step-pill.done:not(.active) .step-pill-num {
+    background: var(--green); color: #fff; border-color: var(--green);
   }
   .step {
     display: flex; align-items: center; gap: 9px; flex: 1; min-width: 0;
@@ -359,9 +545,77 @@
   .stage-card { padding: 0; overflow: hidden; }
   .video-wrap {
     position: relative; background: #0a0e1a;
-    aspect-ratio: 16/10;
+    aspect-ratio: 1 / 1;
     overflow: hidden;
   }
+
+  /* 수치 가시화용 게이지 바 */
+  .gauge {
+    height: 8px; background: var(--panel-soft);
+    border: 1px solid var(--border); border-radius: 999px;
+    overflow: hidden; margin-top: 6px;
+  }
+  .gauge-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--blue), var(--cyan, #06b6d4));
+    border-radius: 999px; transition: width .15s ease;
+  }
+  .det-row {
+    font-family: var(--mono); font-size: 11px;
+    padding: 7px 10px; background: var(--panel-soft);
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  .det-row .det-head { display: flex; justify-content: space-between; }
+  .det-row .det-pct { color: var(--blue); }
+  .ct-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+  .ct-color {
+    width: 46px; height: 46px; border-radius: 11px; border: 2px solid var(--border);
+    cursor: pointer; transition: .12s; padding: 0;
+  }
+  .ct-color:hover { transform: translateY(-1px); }
+  .ct-color.active { border-color: var(--ink); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .ct-pick-wrap { position: relative; width: 46px; height: 46px; display: block; }
+  .ct-pick-wrap input[type=color] {
+    width: 46px; height: 46px; border: 2px dashed var(--border-strong); border-radius: 11px;
+    background: var(--panel-soft); cursor: pointer; padding: 3px;
+  }
+  .ct-pick-wrap span {
+    position: absolute; top: -7px; right: -7px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--accent); color: #fff; display: grid; place-items: center;
+    font-size: 14px; font-weight: 700; pointer-events: none; box-shadow: var(--shadow-sm);
+  }
+
+  /* 영상 필터 모드 — 바둑판(grid) 토글 칩 */
+  .ff-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ff-mode {
+    padding: 11px 8px; border: 1px solid var(--border); border-radius: 9px;
+    background: var(--panel-soft); color: var(--ink-2);
+    font-family: var(--sans); font-size: 14px; font-weight: 500; cursor: pointer; transition: .12s;
+  }
+  .ff-mode:hover:not(.active) { border-color: var(--ink-4); color: var(--ink); }
+  .ff-mode.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+
+  /* 추론 결과 도넛 게이지 */
+  .donut { width: 132px; height: 132px; display: block; margin: 2px auto 6px; }
+  .donut-track { fill: none; stroke: var(--panel-soft); stroke-width: 12; }
+  .donut-arc {
+    fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round;
+    stroke-dasharray: 0 314.16; transform: rotate(-90deg); transform-origin: 60px 60px;
+    transition: stroke-dasharray .25s ease, stroke .25s;
+  }
+  .donut-pct {
+    font-family: var(--mono); font-size: 26px; font-weight: 700; fill: var(--ink);
+    text-anchor: middle; dominant-baseline: central;
+  }
+
+  /* 영상처리 파라미터 슬라이더 */
+  .param { margin-top: 4px; padding: 12px; background: var(--panel-soft); border: 1px solid var(--border); border-radius: 8px; }
+  .param-label { display: flex; justify-content: space-between; font-size: 14px; font-weight: 600; color: var(--ink-2); margin-bottom: 8px; }
+  .param-label span { font-family: var(--mono); color: var(--accent-ink); }
+  .param-hint { margin: 8px 0 0; font-size: 12.5px; color: var(--ink-4); line-height: 1.4; }
+  .slider { -webkit-appearance: none; appearance: none; width: 100%; height: 5px; border-radius: 999px; background: var(--border-strong); outline: none; }
+  .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 17px; height: 17px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; box-shadow: var(--shadow-sm); cursor: pointer; }
+  .slider::-moz-range-thumb { width: 17px; height: 17px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; cursor: pointer; }
   .video-wrap video {
     width: 100%; height: 100%; object-fit: cover;
     transform: scaleX(-1);
@@ -424,9 +678,9 @@
   .btn:disabled { opacity: .4; cursor: not-allowed; }
 
   .btn.primary {
-    background: var(--ink); color: #fff; border-color: var(--ink);
+    background: var(--accent); color: #fff; border-color: var(--accent);
   }
-  .btn.primary:hover:not(:disabled) { background: #1f2937; border-color: #1f2937; }
+  .btn.primary:hover:not(:disabled) { background: #e04a40; border-color: #e04a40; }
 
   .btn.blue {
     background: var(--blue); color: #fff; border-color: var(--blue);
@@ -463,11 +717,11 @@
   }
   .metrics {
     display: grid; grid-template-columns: repeat(3, 1fr);
-    font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-    letter-spacing: 0.03em;
+    font-family: var(--mono); font-size: 13.5px; color: var(--ink-3);
+    letter-spacing: 0.02em;
   }
-  .metrics > div { display: flex; flex-direction: column; gap: 2px; }
-  .metrics .k { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); }
+  .metrics > div { display: flex; flex-direction: column; gap: 3px; }
+  .metrics .k { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-4); }
   .metrics .v { font-size: 14px; color: var(--ink); font-weight: 500; }
 
   /* ─────────── 학습 곡선 (SVG line chart) ─────────── */
@@ -591,6 +845,7 @@
   }
   .gallery-item:hover { border-color: var(--rose); }
   .gallery-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .gallery-item canvas { width: 100%; height: 100%; display: block; background: #0a0e1a; }
   .gallery-item .del-mark {
     position: absolute; inset: 0; background: rgba(225, 29, 72, 0.85);
     color: #fff; display: none; align-items: center; justify-content: center;
@@ -603,7 +858,7 @@
   }
 
   .hint {
-    color: var(--ink-3); font-size: 12.5px; line-height: 1.55;
+    color: var(--ink-3); font-size: 14px; line-height: 1.6;
     margin-top: 10px;
   }
   .hint.note {
@@ -661,66 +916,45 @@
   <div class="topbar-inner">
     <div class="logo">
       <div class="logo-mark">E</div>
-      <div class="logo-text"><b>EDUINO</b> · AI Learning Lab</div>
-    </div>
-    <div id="status" class="status busy">
-      <span class="led"></span>
-      <span id="status-text">SYSTEM INIT</span>
+      <div class="logo-titles">
+        <div class="logo-title">Eduino <span>AI</span></div>
+        <div class="logo-tag">브라우저로 직접 배우는 AI · 영상처리 실험실</div>
+      </div>
     </div>
   </div>
 </header>
 
-<!-- ────────────── 메인 탭 (직접학습 / 지도학습) ────────────── -->
-<nav class="main-tabs">
-  <div class="main-tab active" data-tab="direct">
-    <div class="mt-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
-        <circle cx="12" cy="13" r="3.5"/>
-        <circle cx="12" cy="13" r="1"/>
-      </svg>
+<div id="insecure-warn" class="insecure-warn">
+  ⚠ 카메라·마이크는 <b>localhost</b> 또는 <b>HTTPS</b>에서만 동작합니다. 현재 주소(<code id="insecure-origin"></code>)에서는 권한 요청이 뜨지 않습니다 — <code>http://localhost:8000</code> 으로 접속하세요.
+</div>
+
+<!-- ────────────── 좌측 사이드바 + 콘텐츠 ────────────── -->
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <div class="content">
+    <!-- 기능 정보 요약 카드 -->
+    <div class="feature-info">
+      <div class="fi-head">
+        <span class="fi-name" id="fi-name">이미지 분류</span>
+        <span class="fi-type" id="fi-type">지도학습 · 전이학습</span>
+        <span class="fi-model" id="fi-model">MobileNet v2</span>
+      </div>
+      <p class="fi-desc" id="fi-desc">카메라로 직접 클래스를 만들어 사진을 분류합니다.</p>
+      <div class="fi-theory" id="fi-theory">
+        <div class="fi-tcard"><div class="fi-th">📊 학습 정보</div><p id="fi-learn"></p></div>
+        <div class="fi-tcard"><div class="fi-th">⚙️ 알고리즘 정보</div><p id="fi-algo"></p></div>
+      </div>
     </div>
-    <div class="mt-text">
-      <span class="mt-name">직접학습</span>
-      <span class="mt-sub">CAMERA · IMAGE · KNN / TRANSFER</span>
-    </div>
-    <span class="mt-badge">LIVE</span>
-  </div>
-  <div class="main-tab" data-tab="supervised">
-    <div class="mt-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-        <circle cx="7" cy="7" r="1.5"/>
-        <path d="M12 14l4 4M16 14l-4 4"/>
-      </svg>
-    </div>
-    <div class="mt-text">
-      <span class="mt-name">지도학습</span>
-      <span class="mt-sub">POSE · AUDIO · MULTIMODAL</span>
-    </div>
-    <span class="mt-badge">EXTENDED</span>
-  </div>
-  <div class="main-tab" data-tab="pretrained">
-    <div class="mt-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <ellipse cx="12" cy="5" rx="8" ry="2.5"/>
-        <path d="M4 5v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5V5"/>
-        <path d="M4 11v6c0 1.4 3.6 2.5 8 2.5s8-1.1 8-2.5v-6"/>
-        <path d="M9 17l2 2 4-4"/>
-      </svg>
-    </div>
-    <div class="mt-text">
-      <span class="mt-name">사전학습</span>
-      <span class="mt-sub">DETECTION · SEGMENT · DEPTH</span>
-    </div>
-    <span class="mt-badge">INFER</span>
-  </div>
-</nav>
+
+    <!-- 단계 네비 (기능별 진행 단계) -->
+    <div class="step-nav" id="step-nav"></div>
 
 <!-- ──────────────────────── 메인 ──────────────────────── -->
 <main>
   <!-- ╔═════════════ 직접학습 탭 ═════════════╗ -->
   <div id="panel-direct" class="tab-panel active">
+  <div class="sub-panel active">
   <!-- 좌: 클래스 -->
   <aside class="card">
     <div class="card-h">
@@ -853,7 +1087,12 @@
     </div>
     <div class="card-b">
       <div class="top-pred idle" id="top-pred">
-        <div class="tp-label">PREDICTION</div>
+        <svg class="donut" viewBox="0 0 120 120">
+          <circle class="donut-track" cx="60" cy="60" r="50"/>
+          <circle class="donut-arc" cx="60" cy="60" r="50" id="top-donut-arc"/>
+          <text class="donut-pct" x="60" y="60" id="top-donut-pct">0%</text>
+        </svg>
+        <div class="tp-label">지금 무엇으로 보이나요?</div>
         <div class="tp-name">아직 학습 전</div>
         <div class="tp-conf"></div>
       </div>
@@ -863,61 +1102,537 @@
     </div>
   </aside>
   </div>
+  </div>
   <!-- ╚═════════════ /직접학습 ═════════════╝ -->
 
   <!-- ╔═════════════ 지도학습 탭 ═════════════╗ -->
   <div id="panel-supervised" class="tab-panel">
-    <div class="super-hero">
-      <h2>지도학습</h2>
-      <p class="lead">
-        포즈와 음성으로 만드는 인식기.<br>
-        라벨이 있는 데이터로 모델을 학습시키는 정통 지도학습 워크플로우를 체험합니다.
-      </p>
-      <div class="super-grid">
-        <div class="super-algo">
-          <h3>포즈 인식</h3>
-          <p class="algo-sub">MOVENET · KEYPOINT + KNN</p>
-          <span class="algo-status">PHASE 3 · 준비 중</span>
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-sub="pose">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="5" r="2.2"/>
+          <path d="M12 7.5v5"/>
+          <path d="M7 10l5 2.5 5-2.5"/>
+          <path d="M12 12.5L9 21M12 12.5L15 21"/>
+        </svg>
+        포즈 인식
+      </button>
+      <button class="sub-tab" data-sub="audio">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v18M7 8v8M17 8v8M3 11v2M21 11v2"/>
+        </svg>
+        음성 학습
+      </button>
+    </div>
+
+    <!-- ─── 포즈 인식 sub-panel ─── -->
+    <div id="sub-pose" class="sub-panel active">
+      <aside class="card">
+        <div class="card-h">
+          <span class="label">POSE CLASSES</span>
+          <span class="meta" id="p-class-count-meta">0 / 4</span>
         </div>
-        <div class="super-algo">
-          <h3>음성 분류</h3>
-          <p class="algo-sub">SPEECH COMMANDS · TRANSFER</p>
-          <span class="algo-status">PHASE 4 · 준비 중</span>
+        <div class="card-b">
+          <div id="p-class-list"></div>
+          <button class="btn ghost" id="p-add-class" style="width:100%;margin-top:6px">+ 클래스 추가</button>
+          <p class="hint">동작을 만들고 클래스를 클릭하여 그 동작 자세로 데이터를 모으세요. (예: 팔 들기, 앉기, T자세)</p>
         </div>
-      </div>
+      </aside>
+
+      <section style="display:flex;flex-direction:column;gap:14px">
+        <div class="card stage-card">
+          <div class="steps-bar">
+            <div class="step active" data-step="1"><div class="step-num">1</div><div class="step-text"><div class="step-label">동작 만들기</div><div class="step-sub">DEFINE</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="2"><div class="step-num">2</div><div class="step-text"><div class="step-label">자세 수집</div><div class="step-sub">CAPTURE</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="3"><div class="step-num">3</div><div class="step-text"><div class="step-label">모델 학습</div><div class="step-sub">TRAIN</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="4"><div class="step-num">4</div><div class="step-text"><div class="step-label">실시간 추론</div><div class="step-sub">INFER</div></div></div>
+          </div>
+
+          <div class="video-wrap">
+            <video id="p-webcam" autoplay playsinline muted></video>
+            <canvas id="p-pose-overlay" class="pose-overlay"></canvas>
+            <div class="video-overlay" id="p-cam-overlay">
+              <div>
+                <div class="ph">CAMERA · STANDBY</div>
+                <div class="ph-msg">카메라를 켜면 키포인트가 표시됩니다</div>
+              </div>
+            </div>
+            <div class="cam-overlay-top">
+              <div class="cam-target">수집 대상 · <b id="p-cap-target-name">—</b></div>
+              <div class="live-dot" id="p-live-dot">REC</div>
+            </div>
+          </div>
+
+          <div class="cam-controls">
+            <button class="btn" id="p-cam-toggle">카메라 켜기</button>
+            <button class="btn blue" id="p-capture" disabled>자세 캡처 (꾹 누르면 연속)</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <span class="label">TRAINING</span>
+            <span class="meta">MOVENET · KEYPOINT + DENSE</span>
+          </div>
+          <div class="card-b">
+            <div class="train-row">
+              <label>학습 횟수</label>
+              <input type="number" id="p-epochs" value="40" min="5" max="100" />
+              <button class="btn primary" id="p-train" disabled>모델 학습 시작</button>
+            </div>
+            <div class="progress"><div id="p-train-bar"></div></div>
+            <div class="metrics">
+              <div><span class="k">EPOCH</span><span class="v" id="p-m-epoch">0 / 0</span></div>
+              <div><span class="k">LOSS</span><span class="v" id="p-m-loss">—</span></div>
+              <div><span class="k">ACCURACY</span><span class="v" id="p-m-acc">—</span></div>
+            </div>
+
+            <div class="train-chart" id="p-train-chart-box">
+              <div class="train-chart-head">
+                <span class="train-chart-title">LEARNING CURVE</span>
+                <div class="train-chart-legend">
+                  <span class="legend-acc">Accuracy</span>
+                  <span class="legend-loss">Loss</span>
+                </div>
+              </div>
+              <svg id="p-train-chart-svg" viewBox="0 0 400 110" preserveAspectRatio="none">
+                <line class="train-chart-grid" x1="0" y1="20" x2="400" y2="20"/>
+                <line class="train-chart-grid" x1="0" y1="55" x2="400" y2="55"/>
+                <line class="train-chart-grid" x1="0" y1="90" x2="400" y2="90"/>
+                <polyline id="p-chart-acc" fill="none" stroke="#059669" stroke-width="2" stroke-linejoin="round" points=""/>
+                <polyline id="p-chart-loss" fill="none" stroke="#d97706" stroke-width="2" stroke-linejoin="round" points=""/>
+                <text class="train-chart-axis" x="4" y="18">100%</text>
+                <text class="train-chart-axis" x="4" y="93">0</text>
+              </svg>
+            </div>
+
+            <div class="confusion" id="p-confusion-box">
+              <div class="confusion-head">
+                <span>CONFUSION MATRIX</span>
+                <span class="meta" id="p-confusion-meta">SELF-PREDICTION</span>
+              </div>
+              <div id="p-confusion-table-wrap"></div>
+            </div>
+
+            <p class="hint" id="p-train-hint">클래스 2개 이상, 각각에 자세 데이터가 있어야 학습할 수 있습니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="card-h">
+          <span class="label">INFERENCE</span>
+          <span class="meta" id="p-infer-meta">IDLE</span>
+        </div>
+        <div class="card-b">
+          <div class="top-pred idle" id="p-top-pred">
+            <svg class="donut" viewBox="0 0 120 120">
+              <circle class="donut-track" cx="60" cy="60" r="50"/>
+              <circle class="donut-arc" cx="60" cy="60" r="50" id="p-top-donut-arc"/>
+              <text class="donut-pct" x="60" y="60" id="p-top-donut-pct">0%</text>
+            </svg>
+            <div class="tp-label">지금 어떤 동작인가요?</div>
+            <div class="tp-name">아직 학습 전</div>
+            <div class="tp-conf"></div>
+          </div>
+          <div id="p-bars"></div>
+          <button class="btn blue" id="p-infer-toggle" disabled style="width:100%;margin-top:14px">추론 시작</button>
+          <p class="hint">학습 후 실시간으로 자세를 분류합니다.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ─── 음성 학습 sub-panel ─── -->
+    <div id="sub-audio" class="sub-panel" style="display:none">
+      <aside class="card">
+        <div class="card-h">
+          <span class="label">CLASSES</span>
+          <span class="meta" id="a-class-count-meta">0 / 4</span>
+        </div>
+        <div class="card-b">
+          <div id="a-class-list"></div>
+          <button class="btn ghost" id="a-add-class" style="width:100%;margin-top:6px">+ 클래스 추가</button>
+          <p class="hint">클래스를 만들고 선택해 마이크에 1초씩 녹음합니다. (예: 켜, 꺼, 시작)</p>
+        </div>
+      </aside>
+
+      <section style="display:flex;flex-direction:column;gap:14px">
+        <div class="card stage-card">
+          <div class="steps-bar">
+            <div class="step active" data-step="1"><div class="step-num">1</div><div class="step-text"><div class="step-label">단어 만들기</div><div class="step-sub">DEFINE</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="2"><div class="step-num">2</div><div class="step-text"><div class="step-label">음성 녹음</div><div class="step-sub">CAPTURE</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="3"><div class="step-num">3</div><div class="step-text"><div class="step-label">모델 학습</div><div class="step-sub">TRAIN</div></div></div>
+            <div class="step-line"></div>
+            <div class="step" data-step="4"><div class="step-num">4</div><div class="step-text"><div class="step-label">실시간 추론</div><div class="step-sub">INFER</div></div></div>
+          </div>
+
+          <div class="video-wrap" style="aspect-ratio:16/8;background:#0a0e1a">
+            <canvas id="a-waveform" style="position:absolute;inset:0;width:100%;height:100%;display:block"></canvas>
+            <div class="video-overlay" id="a-mic-overlay">
+              <div>
+                <div class="ph">MIC · STANDBY</div>
+                <div class="ph-msg">마이크를 켜면 파형이 표시됩니다</div>
+              </div>
+            </div>
+            <div class="cam-overlay-top">
+              <div class="cam-target">녹음 대상 · <b id="a-cap-target-name">—</b></div>
+              <div class="live-dot" id="a-live-dot">REC</div>
+            </div>
+          </div>
+
+          <div class="cam-controls">
+            <button class="btn" id="a-mic-toggle">마이크 켜기</button>
+            <button class="btn blue" id="a-capture" disabled>1초 녹음</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h">
+            <span class="label">TRAINING</span>
+            <span class="meta">SPEECH COMMANDS · TRANSFER</span>
+          </div>
+          <div class="card-b">
+            <div class="train-row">
+              <label>학습 횟수</label>
+              <input type="number" id="a-epochs" value="25" min="5" max="100" />
+              <button class="btn primary" id="a-train" disabled>모델 학습 시작</button>
+            </div>
+            <div class="progress"><div id="a-train-bar"></div></div>
+            <div class="metrics">
+              <div><span class="k">EPOCH</span><span class="v" id="a-m-epoch">0 / 0</span></div>
+              <div><span class="k">LOSS</span><span class="v" id="a-m-loss">—</span></div>
+              <div><span class="k">ACCURACY</span><span class="v" id="a-m-acc">—</span></div>
+            </div>
+            <p class="hint" id="a-train-hint">클래스 2개 이상, 각각에 최소 8회 녹음이 있어야 학습할 수 있습니다.</p>
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="card-h">
+          <span class="label">INFERENCE</span>
+          <span class="meta" id="a-infer-meta">IDLE</span>
+        </div>
+        <div class="card-b">
+          <div class="top-pred idle" id="a-top-pred">
+            <div class="tp-label">PREDICTION</div>
+            <div class="tp-name">아직 학습 전</div>
+            <div class="tp-conf"></div>
+          </div>
+          <div id="a-bars"></div>
+          <button class="btn blue" id="a-infer-toggle" disabled style="width:100%;margin-top:14px">추론 시작</button>
+          <p class="hint">학습 후 마이크 입력을 실시간으로 분류합니다.</p>
+        </div>
+      </aside>
     </div>
   </div>
   <!-- ╚═════════════ /지도학습 ═════════════╝ -->
 
-  <!-- ╔═════════════ 사전학습 탭 ═════════════╗ -->
+  <!-- ╔═════════════ 사전학습 추론 탭 ═════════════╗ -->
   <div id="panel-pretrained" class="tab-panel">
-    <div class="super-hero">
-      <h2>사전학습</h2>
-      <p class="lead">
-        대규모 데이터로 이미 학습된 모델로 추론만 수행합니다.<br>
-        AI가 시각 정보를 어떻게 다르게 해석하는지 한눈에 비교해 보세요.
-      </p>
-      <div class="super-grid">
-        <div class="super-algo">
-          <h3>객체 탐지</h3>
-          <p class="algo-sub">COCO-SSD · 90 CLASSES</p>
-          <span class="algo-status">PHASE 5 · 준비 중</span>
+    <div class="sub-tabs">
+      <button class="sub-tab active" data-sub="detect">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2"/>
+          <rect x="8" y="8" width="5" height="5"/>
+        </svg>
+        객체 탐지
+      </button>
+      <button class="sub-tab" data-sub="segment">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="7" r="3"/>
+          <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+        </svg>
+        인물 분리
+      </button>
+    </div>
+
+    <!-- ─── 객체 탐지 ─── -->
+    <div id="sub-detect" class="sub-panel active">
+      <aside class="card">
+        <div class="card-h"><span class="label">MODEL</span><span class="meta">COCO-SSD</span></div>
+        <div class="card-b">
+          <p class="hint" style="margin:0 0 12px">대규모 데이터(<b>COCO</b>) 90개 클래스로 사전 학습된 모델. 카메라 영상에서 사람·차·동물 등을 실시간으로 박스 표시합니다.</p>
+          <div class="param">
+            <label class="param-label">신뢰도 임계값 <span id="d-thr-val">50%</span></label>
+            <input type="range" id="d-thr" min="10" max="90" value="50" class="slider">
+            <p class="param-hint">값을 올리면 확실한 것만 남고, 내리면 더 많이(부정확해도) 잡습니다.</p>
+          </div>
+          <div class="metrics" style="margin-top:12px">
+            <div><span class="k">CLASSES</span><span class="v">90</span></div>
+            <div><span class="k">STATUS</span><span class="v" id="d-status">IDLE</span></div>
+            <div><span class="k">FPS</span><span class="v" id="d-fps">—</span></div>
+          </div>
         </div>
-        <div class="super-algo">
-          <h3>인물 분리</h3>
-          <p class="algo-sub">BODYPIX · SEGMENTATION</p>
-          <span class="algo-status">PHASE 5 · 준비 중</span>
+      </aside>
+      <section>
+        <div class="card stage-card">
+          <div class="video-wrap">
+            <video id="d-webcam" autoplay playsinline muted></video>
+            <canvas id="d-overlay" class="pose-overlay" style="transform:none"></canvas>
+            <div class="video-overlay" id="d-cam-overlay">
+              <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 객체가 탐지됩니다</div></div>
+            </div>
+          </div>
+          <div class="cam-controls">
+            <button class="btn primary" id="d-cam-toggle" style="width:100%">카메라 켜기 · 탐지 시작</button>
+          </div>
         </div>
-        <div class="super-algo">
-          <h3>깊이 추정</h3>
-          <p class="algo-sub">PORTRAIT · MONOCULAR DEPTH</p>
-          <span class="algo-status">PHASE 5 · 준비 중</span>
+      </section>
+      <aside class="card">
+        <div class="card-h"><span class="label">DETECTED</span><span class="meta" id="d-count">0</span></div>
+        <div class="card-b">
+          <div id="d-list" style="display:flex;flex-direction:column;gap:6px"></div>
         </div>
-      </div>
+      </aside>
+    </div>
+
+    <!-- ─── 인물 분리 ─── -->
+    <div id="sub-segment" class="sub-panel" style="display:none">
+      <aside class="card">
+        <div class="card-h"><span class="label">MODEL</span><span class="meta">BODYPIX</span></div>
+        <div class="card-b">
+          <p class="hint" style="margin:0 0 12px"><b>BodyPix</b>는 사람의 윤곽을 픽셀 단위로 분리합니다. 배경을 제거하거나 인물만 강조할 수 있어요.</p>
+          <div class="metrics" style="margin-top:8px">
+            <div><span class="k">MODE</span><span class="v">PERSON SEG</span></div>
+            <div><span class="k">STATUS</span><span class="v" id="s-status">IDLE</span></div>
+            <div><span class="k">FPS</span><span class="v" id="s-fps">—</span></div>
+          </div>
+        </div>
+      </aside>
+      <section>
+        <div class="card stage-card">
+          <div class="video-wrap">
+            <video id="s-webcam" autoplay playsinline muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;transform:scaleX(-1)"></video>
+            <canvas id="s-canvas" style="position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)"></canvas>
+            <div class="video-overlay" id="s-cam-overlay">
+              <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 인물만 분리됩니다</div></div>
+            </div>
+          </div>
+          <div class="cam-controls">
+            <button class="btn primary" id="s-cam-toggle" style="flex:1">카메라 켜기 · 분리 시작</button>
+            <button class="btn" id="s-mode-toggle">인물 강조로 전환</button>
+          </div>
+        </div>
+      </section>
+      <aside class="card">
+        <div class="card-h"><span class="label">PIXELS</span><span class="meta" id="s-meta">—</span></div>
+        <div class="card-b">
+          <div class="metrics" style="grid-template-columns:1fr">
+            <div><span class="k">PERSON PIXELS</span><span class="v" id="s-person-px">—</span></div>
+            <div style="margin-top:8px"><span class="k">RATIO</span><span class="v" id="s-ratio">—</span>
+              <div class="gauge"><div class="gauge-fill" id="s-ratio-bar"></div></div>
+            </div>
+          </div>
+          <p class="hint" style="margin-top:12px">사람과 배경을 픽셀 단위로 <b>분리</b>하는 기능입니다(얼굴 인식·분류 아님). 기본은 배경을 초록색으로 덮어 가리고(크로마키), 버튼을 누르면 인물만 색으로 강조하는 모드로 바뀝니다.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ─── 영상 필터 · 모션 ─── -->
+    <div id="sub-filter" class="sub-panel" style="display:none">
+      <aside class="card">
+        <div class="card-h"><span class="label">필터</span><span class="meta">CANVAS</span></div>
+        <div class="card-b">
+          <p class="hint" style="margin:0 0 12px">고전 영상처리 효과를 실시간으로 적용합니다. 버튼으로 모드를 바꿔보세요.</p>
+          <div class="ff-grid">
+            <button class="ff-mode active" data-fmode="none">원본</button>
+            <button class="ff-mode" data-fmode="gray">흑백</button>
+            <button class="ff-mode" data-fmode="invert">색 반전</button>
+            <button class="ff-mode" data-fmode="contrast">고대비</button>
+            <button class="ff-mode" data-fmode="blur">블러</button>
+            <button class="ff-mode" data-fmode="motion">모션 감지</button>
+          </div>
+          <div class="param" style="margin-top:14px">
+            <label class="param-label">밝기 <span id="ff-bright-val">100%</span></label>
+            <input type="range" id="ff-bright" min="20" max="200" value="100" class="slider">
+            <label class="param-label" style="margin-top:10px">대비 <span id="ff-contrast-val">100%</span></label>
+            <input type="range" id="ff-contrast" min="20" max="300" value="100" class="slider">
+            <label class="param-label" style="margin-top:10px">블러 <span id="ff-blur-val">0px</span></label>
+            <input type="range" id="ff-blur" min="0" max="12" value="0" class="slider">
+            <p class="param-hint">슬라이더를 움직여 효과를 조절하세요. (모션 감지 모드에는 적용되지 않습니다)</p>
+            <button class="btn ghost" id="ff-compare" style="width:100%;margin-top:8px">원본 보기 (누르는 동안)</button>
+          </div>
+        </div>
+      </aside>
+      <section style="display:flex;flex-direction:column;gap:14px">
+        <div class="card stage-card">
+          <div class="video-wrap">
+            <video id="ff-webcam" autoplay playsinline muted></video>
+            <canvas id="ff-canvas" class="pose-overlay"></canvas>
+            <div class="video-overlay" id="ff-cam-overlay">
+              <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 필터가 적용됩니다</div></div>
+            </div>
+          </div>
+          <div class="cam-controls">
+            <button class="btn primary" id="ff-cam-toggle" style="width:100%">카메라 켜기</button>
+          </div>
+        </div>
+      </section>
+      <aside class="card">
+        <div class="card-h"><span class="label">INFO</span><span class="meta" id="ff-mode-name">원본</span></div>
+        <div class="card-b">
+          <div class="metrics" style="grid-template-columns:1fr 1fr">
+            <div><span class="k">STATUS</span><span class="v" id="ff-status">IDLE</span></div>
+            <div><span class="k">FPS</span><span class="v" id="ff-fps">—</span></div>
+          </div>
+          <div style="margin-top:14px;display:none" id="ff-motion-row">
+            <div style="font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-4);display:flex;justify-content:space-between">
+              <span>MOTION</span><span id="ff-motion" style="color:var(--ink-2)">—</span>
+            </div>
+            <div class="gauge"><div class="gauge-fill" id="ff-motion-bar" style="background:linear-gradient(90deg,#e11d48,#f59e0b)"></div></div>
+          </div>
+          <p class="hint" style="margin-top:12px">흑백·색반전·고대비·블러는 즉시 적용됩니다. <b>모션 감지</b>는 움직이는 부분을 빨갛게 표시합니다 — "멈추기 게임"에 활용해 보세요.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ─── 뼈대(포즈) 검출 ─── -->
+    <div id="sub-skeleton" class="sub-panel" style="display:none">
+      <aside class="card">
+        <div class="card-h"><span class="label">MODEL</span><span class="meta">MOVENET</span></div>
+        <div class="card-b">
+          <p class="hint" style="margin:0 0 12px"><b>MoveNet</b>으로 사람의 관절 17개를 추정해 실시간 뼈대를 그립니다. 학습 없이 바로 동작합니다.</p>
+          <div class="param">
+            <label class="param-label">관절 표시 민감도 <span id="sk-min-val">30%</span></label>
+            <input type="range" id="sk-min" min="10" max="70" value="30" class="slider">
+            <p class="param-hint">내리면 흐릿한 관절까지 표시, 올리면 확실한 관절만 표시합니다.</p>
+          </div>
+          <div class="metrics" style="margin-top:12px">
+            <div><span class="k">KEYPOINTS</span><span class="v">17</span></div>
+            <div><span class="k">STATUS</span><span class="v" id="sk-status">IDLE</span></div>
+            <div><span class="k">FPS</span><span class="v" id="sk-fps">—</span></div>
+          </div>
+        </div>
+      </aside>
+      <section style="display:flex;flex-direction:column;gap:14px">
+        <div class="card stage-card">
+          <div class="video-wrap">
+            <video id="sk-webcam" autoplay playsinline muted></video>
+            <canvas id="sk-canvas" class="pose-overlay"></canvas>
+            <div class="video-overlay" id="sk-cam-overlay">
+              <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 뼈대가 표시됩니다</div></div>
+            </div>
+          </div>
+          <div class="cam-controls">
+            <button class="btn primary" id="sk-cam-toggle" style="width:100%">카메라 켜기 · 뼈대 시작</button>
+          </div>
+        </div>
+      </section>
+      <aside class="card">
+        <div class="card-h"><span class="label">DETECTED</span><span class="meta" id="sk-count">—</span></div>
+        <div class="card-b">
+          <div style="margin-bottom:10px"><span style="font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-4)">검출 신뢰 관절</span>
+            <div class="gauge"><div class="gauge-fill" id="sk-conf-bar"></div></div>
+          </div>
+          <p class="hint" style="margin-top:12px">관절(파랑)과 뼈대(선)가 실시간으로 그려집니다. 팔다리를 움직여 보세요.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ─── 얼굴 검출 ─── -->
+    <div id="sub-face" class="sub-panel" style="display:none">
+      <aside class="card">
+        <div class="card-h"><span class="label">MODEL</span><span class="meta">BLAZEFACE</span></div>
+        <div class="card-b">
+          <p class="hint" style="margin:0 0 12px"><b>BlazeFace</b>로 화면 속 얼굴 위치를 실시간 박스로 검출합니다(누구인지 식별하는 인식과는 다릅니다).</p>
+          <div class="metrics" style="margin-top:8px">
+            <div><span class="k">MODEL</span><span class="v">BLAZE</span></div>
+            <div><span class="k">STATUS</span><span class="v" id="fc-status">IDLE</span></div>
+            <div><span class="k">FPS</span><span class="v" id="fc-fps">—</span></div>
+          </div>
+        </div>
+      </aside>
+      <section style="display:flex;flex-direction:column;gap:14px">
+        <div class="card stage-card">
+          <div class="video-wrap">
+            <video id="fc-webcam" autoplay playsinline muted></video>
+            <canvas id="fc-canvas" class="pose-overlay" style="transform:none"></canvas>
+            <div class="video-overlay" id="fc-cam-overlay">
+              <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 얼굴이 검출됩니다</div></div>
+            </div>
+          </div>
+          <div class="cam-controls">
+            <button class="btn primary" id="fc-cam-toggle" style="width:100%">카메라 켜기 · 검출 시작</button>
+          </div>
+        </div>
+      </section>
+      <aside class="card">
+        <div class="card-h"><span class="label">DETECTED</span><span class="meta" id="fc-count">0</span></div>
+        <div class="card-b">
+          <div style="margin-bottom:10px"><span style="font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-4)">검출된 얼굴 수</span>
+            <div class="gauge"><div class="gauge-fill" id="fc-count-bar"></div></div>
+          </div>
+          <p class="hint" style="margin-top:12px">여러 명이 함께 화면에 들어오면 각 얼굴에 박스가 그려집니다.</p>
+        </div>
+      </aside>
+    </div>
+
+    <!-- ─── 색상 추적 ─── -->
+    <div id="sub-colortrack" class="sub-panel" style="display:none">
+      <aside class="card">
+        <div class="card-h"><span class="label">알고리즘</span><span class="meta">RGB THRESHOLD</span></div>
+        <div class="card-b">
+          <p class="hint" style="margin:0 0 12px">선택한 색과 비슷한 픽셀만 남기고 배경을 어둡게 처리합니다. 색을 고르거나 직접 입력하세요.</p>
+          <div class="ct-swatches">
+            <button class="ct-color active" data-r="220" data-g="50" data-b="50" style="background:#dc3232" title="빨강"></button>
+            <button class="ct-color" data-r="240" data-g="130" data-b="40" style="background:#f08228" title="주황"></button>
+            <button class="ct-color" data-r="235" data-g="210" data-b="55" style="background:#ebd237" title="노랑"></button>
+            <button class="ct-color" data-r="40" data-g="180" data-b="80" style="background:#28b450" title="초록"></button>
+            <button class="ct-color" data-r="50" data-g="190" data-b="220" style="background:#32bedc" title="하늘"></button>
+            <button class="ct-color" data-r="50" data-g="110" data-b="230" style="background:#326ee6" title="파랑"></button>
+            <button class="ct-color" data-r="140" data-g="70" data-b="200" style="background:#8c46c8" title="보라"></button>
+            <button class="ct-color" data-r="230" data-g="90" data-b="160" style="background:#e65aa0" title="분홍"></button>
+            <label class="ct-pick-wrap" title="직접 색 선택">
+              <input type="color" id="ct-pick" value="#dc3232">
+              <span>＋</span>
+            </label>
+          </div>
+          <div class="param" style="margin-top:12px">
+            <label class="param-label">색 허용 범위 <span id="ct-tol-val">140</span></label>
+            <input type="range" id="ct-tol" min="60" max="260" value="140" class="slider">
+            <p class="param-hint">올리면 비슷한 색까지 폭넓게, 내리면 정확히 같은 색만 잡습니다.</p>
+          </div>
+          <div class="metrics" style="margin-top:12px;grid-template-columns:1fr 1fr">
+            <div><span class="k">STATUS</span><span class="v" id="ct-status">IDLE</span></div>
+            <div><span class="k">FPS</span><span class="v" id="ct-fps">—</span></div>
+          </div>
+        </div>
+      </aside>
+      <section style="display:flex;flex-direction:column;gap:14px">
+        <div class="card stage-card">
+          <div class="video-wrap">
+            <video id="ct-webcam" autoplay playsinline muted></video>
+            <canvas id="ct-canvas" class="pose-overlay"></canvas>
+            <div class="video-overlay" id="ct-cam-overlay">
+              <div><div class="ph">CAMERA · STANDBY</div><div class="ph-msg">카메라를 켜면 색을 추적합니다</div></div>
+            </div>
+          </div>
+          <div class="cam-controls">
+            <button class="btn primary" id="ct-cam-toggle" style="width:100%">카메라 켜기 · 추적 시작</button>
+          </div>
+        </div>
+      </section>
+      <aside class="card">
+        <div class="card-h"><span class="label">MATCH</span><span class="meta" id="ct-meta">—</span></div>
+        <div class="card-b">
+          <div style="margin-bottom:10px"><span style="font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-4)">선택 색 매칭 비율</span>
+            <div class="gauge"><div class="gauge-fill" id="ct-match-bar"></div></div>
+          </div>
+          <p class="hint" style="margin-top:12px">조명에 따라 인식이 달라집니다. 선명한 단색 물체가 가장 잘 추적됩니다.</p>
+        </div>
+      </aside>
     </div>
   </div>
-  <!-- ╚═════════════ /사전학습 ═════════════╝ -->
+  <!-- ╚═════════════ /사전학습 추론 ═════════════╝ -->
 </main>
+  </div><!-- /content -->
+</div><!-- /app-shell -->
 
 <!-- ──────────────────────── 갤러리 모달 ──────────────────────── -->
 <div class="gallery-overlay" id="gallery-overlay">
@@ -932,6 +1647,23 @@
     </div>
     <div class="gallery-body">
       <div class="gallery-grid" id="gallery-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────── 음성 녹음 관리 모달 ──────────────────────── -->
+<div class="gallery-overlay" id="audio-rec-overlay">
+  <div class="gallery-modal">
+    <div class="gallery-head">
+      <div class="gallery-title">
+        <span class="dot" id="audio-rec-dot"></span>
+        <span id="audio-rec-name">—</span>
+        <span class="count" id="audio-rec-count">0</span>
+      </div>
+      <button class="gallery-close" id="audio-rec-close" aria-label="닫기">✕</button>
+    </div>
+    <div class="gallery-body">
+      <div class="gallery-grid" id="audio-rec-grid"></div>
     </div>
   </div>
 </div>
@@ -974,6 +1706,7 @@ const els = {
 };
 
 function setStatus(text, kind) {
+  if (!els.status) return; // 상단 상태 뱃지는 제거됨 (각 패널이 자체 STATUS 표시)
   els.statusText.textContent = text;
   els.status.className = 'status ' + (kind || '');
 }
@@ -1001,6 +1734,7 @@ function updateSteps() {
   if (trained) active = 3;
   if (inferring) active = 3;
   steps[active].classList.add('active');
+  syncStepNav();
 }
 
 /* ── 모델 로드 ───────────────────────────────────────── */
@@ -1034,12 +1768,15 @@ function removeClass(id) {
 }
 function selectClass(id) { state.selectedId = id; renderClasses(); }
 
-function renderClasses() {
-  els.classList.innerHTML = '';
-  state.classes.forEach(c => {
+/* 클래스 목록 렌더 공통 로직 — 이미지/동작 탭이 콜백·상수·갤러리 연동만 다르고
+   DOM 구조가 동일하므로 cfg 로 주입받아 재사용한다. onThumbs 가 없으면(동작 탭)
+   썸네일 클릭 갤러리를 달지 않는다. */
+function renderClassList(cfg) {
+  cfg.container.innerHTML = '';
+  cfg.classes.forEach(c => {
     const div = document.createElement('div');
-    div.className = 'class-item' + (c.id === state.selectedId ? ' selected' : '');
-    div.onclick = () => selectClass(c.id);
+    div.className = 'class-item' + (c.id === cfg.selectedId ? ' selected' : '');
+    div.onclick = () => cfg.onSelect(c.id);
 
     const row = document.createElement('div');
     row.className = 'class-row';
@@ -1047,8 +1784,8 @@ function renderClasses() {
 
     const input = document.createElement('input');
     input.className = 'class-name'; input.value = c.name;
-    input.onclick = (e) => { e.stopPropagation(); selectClass(c.id); };
-    input.oninput = () => { c.name = input.value || c.name; renderBars(); updateCapTarget(); };
+    input.onclick = (e) => { e.stopPropagation(); cfg.onSelect(c.id); };
+    input.oninput = () => { c.name = input.value || c.name; cfg.onRename(); };
     row.appendChild(input);
 
     const count = document.createElement('span');
@@ -1057,15 +1794,14 @@ function renderClasses() {
 
     const del = document.createElement('button');
     del.className = 'class-del'; del.textContent = '✕'; del.title = '삭제';
-    del.onclick = (e) => { e.stopPropagation(); removeClass(c.id); };
+    del.onclick = (e) => { e.stopPropagation(); cfg.onRemove(c.id); };
     row.appendChild(del);
 
     div.appendChild(row);
 
     if (c.thumbs.length) {
       const t = document.createElement('div'); t.className = 'thumbs';
-      t.style.cursor = 'pointer';
-      t.title = '클릭해서 갤러리 열기';
+      if (cfg.onThumbs) { t.style.cursor = 'pointer'; t.title = '클릭해서 갤러리 열기'; }
       c.thumbs.slice(-6).forEach(src => {
         const im = document.createElement('img'); im.src = src; t.appendChild(im);
       });
@@ -1073,17 +1809,29 @@ function renderClasses() {
         const m = document.createElement('span'); m.className = 'more';
         m.textContent = '+' + (c.embeddings.length - 6); t.appendChild(m);
       }
-      t.addEventListener('click', (e) => {
-        e.stopPropagation();
-        selectClass(c.id);
-        openGallery(c.id);
-      });
+      if (cfg.onThumbs) {
+        t.addEventListener('click', (e) => {
+          e.stopPropagation();
+          cfg.onSelect(c.id);
+          cfg.onThumbs(c.id);
+        });
+      }
       div.appendChild(t);
     }
-    els.classList.appendChild(div);
+    cfg.container.appendChild(div);
   });
-  els.classCountMeta.textContent = state.classes.length + ' / ' + MAX_CLASSES;
-  els.addClass.disabled = state.classes.length >= MAX_CLASSES;
+  cfg.countMeta.textContent = cfg.classes.length + ' / ' + cfg.max;
+  cfg.addBtn.disabled = cfg.classes.length >= cfg.max;
+}
+
+function renderClasses() {
+  renderClassList({
+    container: els.classList, classes: state.classes, selectedId: state.selectedId,
+    max: MAX_CLASSES, countMeta: els.classCountMeta, addBtn: els.addClass,
+    onSelect: selectClass, onRemove: removeClass,
+    onRename: () => { renderBars(); updateCapTarget(); },
+    onThumbs: openGallery,
+  });
   updateCapTarget();
 }
 
@@ -1133,11 +1881,14 @@ function captureSample() {
 }
 
 /* ── 학습 ───────────────────────────────────────────── */
-async function train() {
-  const usable = state.classes.filter(c => c.embeddings.length > 0);
+/* 분류 헤드 학습 공통 코어 — 이미지/동작 탭이 아키텍처·기본 epochs·UI 요소·
+   상태 메시지만 다르고 학습 절차(원핫 인코딩 → 헤드 구성 → fit → 혼동행렬)는
+   동일하다. 탭별 차이는 cfg 콜백으로 주입한다. */
+async function trainHead(cfg) {
+  const usable = cfg.classes.filter(c => c.embeddings.length > 0);
   if (usable.length < 2) return;
-  setStatus('TRAINING', 'busy');
-  els.train.disabled = true; els.inferToggle.disabled = true; stopInfer();
+  cfg.onStart();
+  cfg.ui.train.disabled = true; cfg.ui.inferToggle.disabled = true;
 
   const xsArr = [], ysArr = [];
   usable.forEach((c, idx) => {
@@ -1148,46 +1899,63 @@ async function train() {
   });
   const xs = tf.tensor2d(xsArr);
   const ys = tf.tensor2d(ysArr);
-  const featDim = xsArr[0].length;
 
-  if (state.head) state.head.dispose();
-  state.head = tf.sequential();
-  state.head.add(tf.layers.dense({ inputShape: [featDim], units: 100, activation: 'relu' }));
-  state.head.add(tf.layers.dropout({ rate: 0.2 }));
-  state.head.add(tf.layers.dense({ units: usable.length, activation: 'softmax' }));
-  state.head.compile({ optimizer: tf.train.adam(0.001), loss: 'categoricalCrossentropy', metrics: ['accuracy'] });
-  state.head._classNames = usable.map(c => ({ name: c.name, color: c.color }));
+  cfg.disposeHead();
+  const head = tf.sequential();
+  head.add(tf.layers.dense({ inputShape: [cfg.featDim ?? xsArr[0].length], units: cfg.hiddenUnits, activation: 'relu' }));
+  head.add(tf.layers.dropout({ rate: 0.2 }));
+  head.add(tf.layers.dense({ units: usable.length, activation: 'softmax' }));
+  head.compile({ optimizer: tf.train.adam(0.001), loss: 'categoricalCrossentropy', metrics: ['accuracy'] });
+  head._classNames = usable.map(c => ({ name: c.name, color: c.color }));
+  cfg.setHead(head);
 
-  const epochs = Math.max(5, Math.min(100, +els.epochs.value || 30));
+  const epochs = Math.max(5, Math.min(100, +cfg.ui.epochs.value || cfg.defaultEpochs));
+  cfg.resetChart();
+  cfg.ui.chartBox.classList.add('on');
+  cfg.ui.confBox.classList.remove('on');
 
-  resetChart();
-  document.getElementById('train-chart-box').classList.add('on');
-  document.getElementById('confusion-box').classList.remove('on');
-
-  await state.head.fit(xs, ys, {
+  await head.fit(xs, ys, {
     epochs, shuffle: true, batchSize: Math.min(16, xsArr.length),
     callbacks: {
       onEpochEnd: (ep, logs) => {
-        const p = Math.round(((ep + 1) / epochs) * 100);
-        els.trainBar.style.width = p + '%';
-        els.mEpoch.textContent = (ep + 1) + ' / ' + epochs;
-        els.mLoss.textContent = logs.loss.toFixed(3);
+        cfg.ui.trainBar.style.width = Math.round(((ep + 1) / epochs) * 100) + '%';
+        cfg.ui.mEpoch.textContent = (ep + 1) + ' / ' + epochs;
+        cfg.ui.mLoss.textContent = logs.loss.toFixed(3);
         const acc = logs.acc ?? logs.accuracy;
-        els.mAcc.textContent = acc != null ? Math.round(acc * 100) + '%' : '—';
-        pushChartPoint(ep + 1, epochs, logs.loss, acc);
+        cfg.ui.mAcc.textContent = acc != null ? Math.round(acc * 100) + '%' : '—';
+        cfg.pushPoint(ep + 1, epochs, logs.loss, acc);
       },
     },
   });
 
-  buildConfusionMatrix(xs, ys, usable);
+  await cfg.buildConf(xs, ys, usable);
   xs.dispose(); ys.dispose();
 
-  state.trained = true;
-  setStatus('TRAINED · READY', 'ready');
-  els.train.disabled = false;
-  els.inferToggle.disabled = !state.stream;
-  els.trainHint.textContent = '학습 완료. 우측 [추론 시작]을 누르세요.';
-  renderBars(); refresh();
+  cfg.ui.train.disabled = false;
+  cfg.ui.trainHint.textContent = '학습 완료. 우측 [추론 시작]을 누르세요.';
+  cfg.onDone();
+}
+
+async function train() {
+  await trainHead({
+    classes: state.classes,
+    ui: {
+      train: els.train, inferToggle: els.inferToggle, epochs: els.epochs,
+      trainBar: els.trainBar, mEpoch: els.mEpoch, mLoss: els.mLoss, mAcc: els.mAcc,
+      chartBox: $('train-chart-box'), confBox: $('confusion-box'), trainHint: els.trainHint,
+    },
+    hiddenUnits: 100, defaultEpochs: 30,
+    onStart: () => { setStatus('TRAINING', 'busy'); stopInfer(); },
+    disposeHead: () => { if (state.head) state.head.dispose(); },
+    setHead: (h) => { state.head = h; },
+    resetChart, pushPoint: pushChartPoint, buildConf: buildConfusionMatrix,
+    onDone: () => {
+      state.trained = true;
+      setStatus('TRAINED · READY', 'ready');
+      els.inferToggle.disabled = !state.stream;
+      renderBars(); refresh();
+    },
+  });
 }
 
 /* ── 학습 곡선 (SVG) ─────────────────────────────────── */
@@ -1197,28 +1965,34 @@ function resetChart() {
   document.getElementById('chart-loss').setAttribute('points', '');
   document.getElementById('chart-acc').setAttribute('points', '');
 }
-function pushChartPoint(ep, totalEp, loss, acc) {
-  chartHistory.loss.push(loss);
-  chartHistory.acc.push(acc != null ? acc : 0);
+/* 학습 곡선(정확도/손실) SVG polyline 좌표 계산 공통 로직.
+   hist 누적 배열과 대상 polyline 엘리먼트만 탭별로 다르다. */
+function drawChart(hist, accEl, lossEl, totalEp, loss, acc) {
+  hist.loss.push(loss);
+  hist.acc.push(acc != null ? acc : 0);
   const W = 400, H = 110, padL = 24, padR = 6, padT = 8, padB = 18;
   const plotW = W - padL - padR, plotH = H - padT - padB;
-  const n = chartHistory.loss.length;
-  const maxLoss = Math.max(0.1, ...chartHistory.loss);
+  const n = hist.loss.length;
+  const maxLoss = Math.max(0.1, ...hist.loss);
   const xOf = (i) => padL + (n === 1 ? plotW / 2 : (i / (totalEp - 1)) * plotW);
   const yAcc = (v) => padT + plotH * (1 - Math.max(0, Math.min(1, v)));
   const yLoss = (v) => padT + plotH * (1 - v / maxLoss);
-  const accPts = chartHistory.acc.map((v, i) => xOf(i) + ',' + yAcc(v)).join(' ');
-  const lossPts = chartHistory.loss.map((v, i) => xOf(i) + ',' + yLoss(v)).join(' ');
-  document.getElementById('chart-acc').setAttribute('points', accPts);
-  document.getElementById('chart-loss').setAttribute('points', lossPts);
+  accEl.setAttribute('points', hist.acc.map((v, i) => xOf(i) + ',' + yAcc(v)).join(' '));
+  lossEl.setAttribute('points', hist.loss.map((v, i) => xOf(i) + ',' + yLoss(v)).join(' '));
+}
+
+function pushChartPoint(ep, totalEp, loss, acc) {
+  drawChart(chartHistory, $('chart-acc'), $('chart-loss'), totalEp, loss, acc);
 }
 
 /* ── 혼동 행렬 (학습 데이터 self-prediction) ──────────── */
-async function buildConfusionMatrix(xs, ys, usable) {
+/* 공통 로직 — head 와 대상 엘리먼트만 탭별로 다르다. xs/ys 가 dispose 되기 전에
+   호출부에서 반드시 await 해야 한다(예측·정답 텐서를 비동기로 읽으므로). */
+async function buildConfusion(head, xs, ys, usable, wrapEl, boxEl) {
   const n = usable.length;
   const mat = Array.from({ length: n }, () => new Array(n).fill(0));
 
-  const preds = state.head.predict(xs);
+  const preds = head.predict(xs);
   const predArr = await preds.array();
   const trueArr = await ys.array();
   preds.dispose();
@@ -1229,7 +2003,6 @@ async function buildConfusionMatrix(xs, ys, usable) {
     mat[truth][pred]++;
   }
 
-  const wrap = document.getElementById('confusion-table-wrap');
   let html = '<table class="confusion-table"><thead><tr><th></th>';
   usable.forEach(c => {
     html += `<th title="${c.name}">${c.name.slice(0, 6)}</th>`;
@@ -1245,8 +2018,12 @@ async function buildConfusionMatrix(xs, ys, usable) {
     html += '</tr>';
   }
   html += '</tbody></table>';
-  wrap.innerHTML = html;
-  document.getElementById('confusion-box').classList.add('on');
+  wrapEl.innerHTML = html;
+  boxEl.classList.add('on');
+}
+
+function buildConfusionMatrix(xs, ys, usable) {
+  return buildConfusion(state.head, xs, ys, usable, $('confusion-table-wrap'), $('confusion-box'));
 }
 
 /* ── 갤러리 (클래스 썸네일 큰 화면) ───────────────────── */
@@ -1282,27 +2059,1235 @@ function closeGallery() {
   document.getElementById('gallery-overlay').classList.remove('on');
 }
 
+/* ── 음성 녹음 관리 (스펙트로그램 썸네일 + 삭제) ─────────── */
+/* speech-commands 녹음은 오디오가 아닌 스펙트로그램이라 재생은 불가하고,
+   썸네일로 확인 + uid 기반 개별 삭제만 제공한다. */
+function drawSpectrogram(canvas, spec) {
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#0a0e1a'; ctx.fillRect(0, 0, W, H);
+  if (!spec || !spec.data || !spec.frameSize) return;
+  const data = spec.data, fs = spec.frameSize;
+  const frames = Math.floor(data.length / fs);
+  if (frames <= 0) return;
+  let mn = Infinity, mx = -Infinity;
+  for (let k = 0; k < data.length; k++) { const v = data[k]; if (v < mn) mn = v; if (v > mx) mx = v; }
+  const range = (mx - mn) || 1;
+  const img = ctx.createImageData(W, H);
+  for (let px = 0; px < W; px++) {
+    const f = Math.min(frames - 1, Math.floor(px / W * frames));
+    for (let py = 0; py < H; py++) {
+      const bin = Math.min(fs - 1, Math.floor((1 - py / H) * fs)); // 낮은 주파수를 아래로
+      const v = (data[f * fs + bin] - mn) / range; // 0..1
+      const idx = (py * W + px) * 4;
+      img.data[idx] = 20; img.data[idx + 1] = Math.round(v * 200); img.data[idx + 2] = Math.round(60 + v * 195); img.data[idx + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+function openAudioRec(classId) {
+  const c = audio.classes.find(x => x.id === classId);
+  if (!c) return;
+  $('audio-rec-dot').style.background = c.color;
+  $('audio-rec-name').textContent = c.name;
+  const exs = audio.transfer ? audio.transfer.getExamples(String(c.id)) : [];
+  $('audio-rec-count').textContent = exs.length + ' 개';
+  const grid = $('audio-rec-grid');
+  if (exs.length === 0) {
+    grid.innerHTML = '<div class="gallery-empty" style="grid-column:1/-1">아직 녹음이 없습니다. 마이크를 켜고 [녹음]을 눌러 수집하세요.</div>';
+  } else {
+    grid.innerHTML = exs.map((ex, i) =>
+      `<div class="gallery-item" data-uid="${ex.uid}" title="녹음 ${i + 1}">
+        <canvas class="rec-spec" width="120" height="72"></canvas>
+        <div class="del-mark">삭제</div>
+      </div>`
+    ).join('');
+    grid.querySelectorAll('.rec-spec').forEach((cv, i) => drawSpectrogram(cv, exs[i].example.spectrogram));
+    grid.querySelectorAll('.gallery-item').forEach(el => {
+      el.addEventListener('click', () => {
+        audio.transfer.removeExample(el.dataset.uid);
+        c.count = audio.transfer.countExamples()[String(c.id)] || 0;
+        openAudioRec(classId);
+        audioRenderClasses(); audioRefresh();
+      });
+    });
+  }
+  $('audio-rec-overlay').classList.add('on');
+}
+function closeAudioRec() {
+  document.getElementById('audio-rec-overlay').classList.remove('on');
+}
+
+/* ============================================================
+   ▌ 포즈 인식 (지도학습)
+   ─ MoveNet keypoint extraction + Dense classifier
+   ─ 직접학습과 동일한 워크플로우, MobileNet 대신 17 keypoints
+   ============================================================ */
+const POSE_PALETTE = ['#0066ff', '#d97706', '#06b6d4', '#059669', '#e11d48', '#7c3aed'];
+const POSE_MAX_CLASSES = 4;
+const POSE_FEAT_DIM = 34; // 17 keypoints × (x, y) normalized
+
+const pose = {
+  classes: [], selectedId: null,
+  detector: null, head: null,
+  stream: null, inferring: false, trained: false,
+  rafLoop: null,
+};
+let poseSeq = 0;
+
+const pEls = {
+  classList: $('p-class-list'), classCountMeta: $('p-class-count-meta'),
+  addClass: $('p-add-class'),
+  video: $('p-webcam'), camOverlay: $('p-cam-overlay'),
+  canvas: $('p-pose-overlay'),
+  capTargetName: $('p-cap-target-name'), liveDot: $('p-live-dot'),
+  camToggle: $('p-cam-toggle'), capture: $('p-capture'),
+  epochs: $('p-epochs'), train: $('p-train'),
+  trainBar: $('p-train-bar'), trainHint: $('p-train-hint'),
+  mEpoch: $('p-m-epoch'), mLoss: $('p-m-loss'), mAcc: $('p-m-acc'),
+  topPred: $('p-top-pred'), bars: $('p-bars'),
+  inferToggle: $('p-infer-toggle'), inferMeta: $('p-infer-meta'),
+  chartBox: $('p-train-chart-box'), chartAcc: $('p-chart-acc'), chartLoss: $('p-chart-loss'),
+  confBox: $('p-confusion-box'), confWrap: $('p-confusion-table-wrap'),
+};
+
+async function poseInit() {
+  pEls.addClass.addEventListener('click', () => poseAddClass());
+  pEls.camToggle.addEventListener('click', poseToggleCam);
+  pEls.train.addEventListener('click', poseTrain);
+  pEls.inferToggle.addEventListener('click', () => pose.inferring ? poseStopInfer() : poseStartInfer());
+  pEls.capture.addEventListener('mousedown', poseStartHold);
+  pEls.capture.addEventListener('touchstart', (e) => { e.preventDefault(); poseStartHold(); });
+  poseAddClass('클래스 1'); poseAddClass('클래스 2');
+
+  if (!window.poseDetection) { console.error('[pose] poseDetection library missing'); return; }
+  try {
+    await tf.ready();
+    try { await tf.setBackend('webgl'); } catch (_) {}
+    pose.detector = await poseDetection.createDetector(
+      poseDetection.SupportedModels.MoveNet,
+      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+    );
+    console.log('[pose] MoveNet ready, backend=', tf.getBackend());
+  } catch (e) { console.error('[pose] MoveNet load fail:', e); }
+}
+
+function poseAddClass(name) {
+  if (pose.classes.length >= POSE_MAX_CLASSES) return;
+  const id = ++poseSeq;
+  const color = POSE_PALETTE[(id - 1) % POSE_PALETTE.length];
+  pose.classes.push({ id, name: name || ('클래스 ' + id), color, embeddings: [], thumbs: [] });
+  if (pose.selectedId == null) pose.selectedId = id;
+  poseRenderClasses(); poseRefresh();
+}
+function poseRemoveClass(id) {
+  pose.classes = pose.classes.filter(c => c.id !== id);
+  if (pose.selectedId === id) pose.selectedId = pose.classes[0]?.id || null;
+  poseRenderClasses(); poseRefresh();
+}
+function poseSelectClass(id) { pose.selectedId = id; poseRenderClasses(); }
+
+function poseRenderClasses() {
+  renderClassList({
+    container: pEls.classList, classes: pose.classes, selectedId: pose.selectedId,
+    max: POSE_MAX_CLASSES, countMeta: pEls.classCountMeta, addBtn: pEls.addClass,
+    onSelect: poseSelectClass, onRemove: poseRemoveClass,
+    onRename: () => { poseRenderBars(); poseUpdateCapTarget(); },
+    onThumbs: null,  // 동작 탭은 갤러리 없음
+  });
+  poseUpdateCapTarget();
+}
+
+function poseUpdateCapTarget() {
+  const sel = pose.classes.find(c => c.id === pose.selectedId);
+  pEls.capTargetName.textContent = sel ? sel.name : '—';
+}
+
+async function poseToggleCam() {
+  if (pose.stream) {
+    pose.stream.getTracks().forEach(t => t.stop());
+    pose.stream = null; pEls.video.srcObject = null;
+    pEls.camOverlay.style.display = 'grid';
+    pEls.camToggle.textContent = '카메라 켜기';
+    pEls.capture.disabled = true;
+    pEls.liveDot.classList.remove('on');
+    poseStopInfer();
+    poseStopOverlayLoop();
+    return;
+  }
+  try {
+    pose.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    pEls.video.srcObject = pose.stream;
+    pEls.camOverlay.style.display = 'none';
+    pEls.camToggle.textContent = '카메라 끄기';
+    pEls.capture.disabled = false;
+    pEls.liveDot.classList.add('on');
+    poseStartOverlayLoop();
+  } catch (e) {
+    pEls.camOverlay.innerHTML = '<div><div class="ph" style="color:#ef4444">CAMERA DENIED</div><div class="ph-msg">브라우저 카메라 권한을 확인하세요</div></div>';
+  }
+}
+
+/* 키포인트 추출 + 정규화 (root-relative: 어깨 중심점 기준) */
+async function extractKeypoints() {
+  if (!pose.detector || !pose.stream) return null;
+  const poses = await pose.detector.estimatePoses(pEls.video);
+  if (!poses || poses.length === 0) return null;
+  const kp = poses[0].keypoints;
+  if (kp.length < 17) return null;
+
+  const ls = kp[5], rs = kp[6];
+  const cx = (ls.x + rs.x) / 2;
+  const cy = (ls.y + rs.y) / 2;
+  const scale = Math.hypot(ls.x - rs.x, ls.y - rs.y) || 1;
+
+  const feat = [];
+  for (let i = 0; i < 17; i++) {
+    feat.push((kp[i].x - cx) / scale);
+    feat.push((kp[i].y - cy) / scale);
+  }
+  return { feat, kp };
+}
+
+/* 키포인트를 캔버스에 그리기 (시각 피드백) */
+const POSE_EDGES = [
+  [5,7],[7,9],[6,8],[8,10],[5,6],[5,11],[6,12],
+  [11,12],[11,13],[13,15],[12,14],[14,16],[0,5],[0,6],
+];
+function drawKeypoints(kp) {
+  const cv = pEls.canvas;
+  const vw = pEls.video.videoWidth, vh = pEls.video.videoHeight;
+  if (!vw || !vh) return;
+  cv.width = vw; cv.height = vh;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, vw, vh);
+
+  ctx.strokeStyle = '#0066ff'; ctx.lineWidth = 3;
+  POSE_EDGES.forEach(([a, b]) => {
+    if (kp[a].score > 0.3 && kp[b].score > 0.3) {
+      ctx.beginPath(); ctx.moveTo(kp[a].x, kp[a].y); ctx.lineTo(kp[b].x, kp[b].y); ctx.stroke();
+    }
+  });
+  ctx.fillStyle = '#06b6d4';
+  kp.forEach(p => {
+    if (p.score > 0.3) {
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+}
+
+async function poseOverlayLoop() {
+  if (!pose.stream) { pose.rafLoop = null; return; }
+  if (pEls.video.readyState >= 2 && pose.detector) {
+    try {
+      const r = await extractKeypoints();
+      if (r) drawKeypoints(r.kp);
+    } catch (e) { /* skip frame */ }
+  }
+  pose.rafLoop = requestAnimationFrame(poseOverlayLoop);
+}
+function poseStartOverlayLoop() {
+  if (pose.rafLoop) return;
+  poseOverlayLoop();
+}
+function poseStopOverlayLoop() {
+  if (pose.rafLoop) cancelAnimationFrame(pose.rafLoop);
+  pose.rafLoop = null;
+  const ctx = pEls.canvas.getContext('2d');
+  ctx.clearRect(0, 0, pEls.canvas.width, pEls.canvas.height);
+}
+
+async function poseCaptureSample() {
+  const sel = pose.classes.find(c => c.id === pose.selectedId);
+  if (!sel || !pose.detector || !pose.stream) return;
+  const r = await extractKeypoints();
+  if (!r) return;
+  sel.embeddings.push(r.feat);
+
+  const cv = document.createElement('canvas');
+  cv.width = 64; cv.height = 48;
+  cv.getContext('2d').drawImage(pEls.video, 0, 0, 64, 48);
+  sel.thumbs.push(cv.toDataURL('image/jpeg', 0.6));
+
+  poseRenderClasses(); poseRefresh();
+}
+
+let poseHoldTimer = null;
+function poseStartHold() {
+  if (pEls.capture.disabled) return;
+  poseCaptureSample();
+  poseHoldTimer = setInterval(poseCaptureSample, 200);
+}
+function poseEndHold() { clearInterval(poseHoldTimer); poseHoldTimer = null; }
+
+async function poseTrain() {
+  await trainHead({
+    classes: pose.classes,
+    ui: {
+      train: pEls.train, inferToggle: pEls.inferToggle, epochs: pEls.epochs,
+      trainBar: pEls.trainBar, mEpoch: pEls.mEpoch, mLoss: pEls.mLoss, mAcc: pEls.mAcc,
+      chartBox: pEls.chartBox, confBox: pEls.confBox, trainHint: pEls.trainHint,
+    },
+    featDim: POSE_FEAT_DIM, hiddenUnits: 64, defaultEpochs: 40,
+    onStart: () => { poseStopInfer(); },
+    disposeHead: () => { if (pose.head) pose.head.dispose(); },
+    setHead: (h) => { pose.head = h; },
+    resetChart: poseResetChart, pushPoint: posePushChartPoint, buildConf: poseBuildConfusion,
+    onDone: () => {
+      pose.trained = true;
+      pEls.inferToggle.disabled = !pose.stream;
+      poseRenderBars(); poseRefresh();
+    },
+  });
+}
+
+const poseChartHist = { loss: [], acc: [] };
+function poseResetChart() {
+  poseChartHist.loss = []; poseChartHist.acc = [];
+  pEls.chartAcc.setAttribute('points', '');
+  pEls.chartLoss.setAttribute('points', '');
+}
+function posePushChartPoint(ep, totalEp, loss, acc) {
+  drawChart(poseChartHist, pEls.chartAcc, pEls.chartLoss, totalEp, loss, acc);
+}
+
+function poseBuildConfusion(xs, ys, usable) {
+  return buildConfusion(pose.head, xs, ys, usable, pEls.confWrap, pEls.confBox);
+}
+
+function poseRenderBars() {
+  const names = pose.head?._classNames || pose.classes.map(c => ({ name: c.name, color: c.color }));
+  renderProbBars(pEls.bars, names, (i) => `p-pct-${i}`, (i) => `p-fill-${i}`);
+}
+
+function poseResetTopPred() {
+  pEls.topPred.className = 'top-pred idle';
+  pEls.topPred.querySelector('.tp-name').textContent = pose.trained ? '대기 중' : '아직 학습 전';
+  pEls.topPred.querySelector('.tp-conf').textContent = '';
+  setDonut('p-top-donut', 0, 'var(--accent)');
+}
+
+async function poseInferLoop() {
+  if (!pose.inferring || !pose.stream || !pose.head) return;
+  const r = await extractKeypoints();
+  if (r) {
+    const x = tf.tensor2d([r.feat]);
+    const out = await pose.head.predict(x).data();
+    x.dispose();
+    const names = pose.head._classNames;
+    const topI = renderProbResults(out, names, (i) => `p-pct-${i}`, (i) => `p-fill-${i}`);
+    pEls.topPred.className = 'top-pred active';
+    pEls.topPred.querySelector('.tp-name').textContent = names[topI].name;
+    pEls.topPred.querySelector('.tp-conf').textContent = '확신도 ' + Math.round(out[topI]*100) + '%';
+    setDonut('p-top-donut', out[topI], names[topI].color);
+  }
+  requestAnimationFrame(poseInferLoop);
+}
+
+function poseStartInfer() {
+  if (!pose.trained || !pose.stream) return;
+  pose.inferring = true;
+  pEls.inferToggle.textContent = '추론 중지';
+  pEls.inferMeta.textContent = 'LIVE';
+  syncStepNav();
+  poseInferLoop();
+}
+function poseStopInfer() {
+  pose.inferring = false;
+  pEls.inferToggle.textContent = '추론 시작';
+  pEls.inferMeta.textContent = 'IDLE';
+  syncStepNav();
+  poseResetTopPred();
+}
+
+function poseRefresh() {
+  const usable = pose.classes.filter(c => c.embeddings.length > 0);
+  pEls.train.disabled = usable.length < 2;
+  poseRenderBars();
+  if (!pose.trained) poseResetTopPred();
+  syncStepNav();
+}
+
+/* ============================================================
+   ▌ 음성 학습 (Speech Commands · Transfer Learning)
+   ============================================================ */
+const AUDIO_PALETTE = ['#0066ff', '#d97706', '#06b6d4', '#059669'];
+const AUDIO_MAX = 4;
+const audio = {
+  classes: [], selectedId: null,
+  base: null, transfer: null,
+  micStream: null, audioCtx: null, analyser: null,
+  recording: false, inferring: false, trained: false,
+  wfRaf: null,
+};
+let audioSeq = 0;
+
+const aEls = {
+  classList: $('a-class-list'), classCountMeta: $('a-class-count-meta'),
+  addClass: $('a-add-class'),
+  waveform: $('a-waveform'), micOverlay: $('a-mic-overlay'),
+  capTargetName: $('a-cap-target-name'), liveDot: $('a-live-dot'),
+  micToggle: $('a-mic-toggle'), capture: $('a-capture'),
+  epochs: $('a-epochs'), train: $('a-train'),
+  trainBar: $('a-train-bar'), trainHint: $('a-train-hint'),
+  mEpoch: $('a-m-epoch'), mLoss: $('a-m-loss'), mAcc: $('a-m-acc'),
+  topPred: $('a-top-pred'), bars: $('a-bars'),
+  inferToggle: $('a-infer-toggle'), inferMeta: $('a-infer-meta'),
+};
+
+async function audioInit() {
+  aEls.addClass.addEventListener('click', () => audioAddClass());
+  aEls.micToggle.addEventListener('click', audioToggleMic);
+  aEls.capture.addEventListener('click', audioCapture);
+  aEls.train.addEventListener('click', audioTrain);
+  aEls.inferToggle.addEventListener('click', () => audio.inferring ? audioStopInfer() : audioStartInfer());
+  audioAddClass('클래스 1'); audioAddClass('클래스 2');
+
+  if (!window.speechCommands) { console.error('[audio] speech-commands missing'); return; }
+  try {
+    audio.base = speechCommands.create('BROWSER_FFT');
+    await audio.base.ensureModelLoaded();
+    console.log('[audio] Speech Commands ready');
+  } catch (e) { console.error('[audio] load fail:', e); }
+}
+
+function audioAddClass(name) {
+  if (audio.classes.length >= AUDIO_MAX) return;
+  const id = ++audioSeq;
+  const color = AUDIO_PALETTE[(id - 1) % AUDIO_PALETTE.length];
+  audio.classes.push({ id, name: name || ('클래스 ' + id), color, count: 0 });
+  if (audio.selectedId == null) audio.selectedId = id;
+  audioRenderClasses(); audioRefresh();
+}
+function audioRemoveClass(id) {
+  audio.classes = audio.classes.filter(c => c.id !== id);
+  if (audio.selectedId === id) audio.selectedId = audio.classes[0]?.id || null;
+  audioRenderClasses(); audioRefresh();
+}
+function audioSelectClass(id) { audio.selectedId = id; audioRenderClasses(); }
+
+function audioRenderClasses() {
+  aEls.classList.innerHTML = '';
+  audio.classes.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'class-item' + (c.id === audio.selectedId ? ' selected' : '');
+    div.onclick = () => audioSelectClass(c.id);
+    const row = document.createElement('div');
+    row.className = 'class-row';
+    row.innerHTML = `<span class="class-dot" style="background:${c.color}"></span>`;
+    const input = document.createElement('input');
+    input.className = 'class-name'; input.value = c.name;
+    input.onclick = (e) => { e.stopPropagation(); audioSelectClass(c.id); };
+    input.oninput = () => { c.name = input.value || c.name; audioRenderBars(); audioUpdateCapTarget(); };
+    row.appendChild(input);
+    const count = document.createElement('span');
+    count.className = 'class-count'; count.textContent = c.count;
+    count.style.cursor = 'pointer';
+    count.title = '녹음 보기·삭제';
+    count.onclick = (e) => { e.stopPropagation(); audioSelectClass(c.id); openAudioRec(c.id); };
+    row.appendChild(count);
+    const del = document.createElement('button');
+    del.className = 'class-del'; del.textContent = '✕'; del.title = '삭제';
+    del.onclick = (e) => { e.stopPropagation(); audioRemoveClass(c.id); };
+    row.appendChild(del);
+    div.appendChild(row);
+    aEls.classList.appendChild(div);
+  });
+  aEls.classCountMeta.textContent = audio.classes.length + ' / ' + AUDIO_MAX;
+  aEls.addClass.disabled = audio.classes.length >= AUDIO_MAX;
+  audioUpdateCapTarget();
+}
+function audioUpdateCapTarget() {
+  const sel = audio.classes.find(c => c.id === audio.selectedId);
+  aEls.capTargetName.textContent = sel ? sel.name : '—';
+}
+
+async function audioToggleMic() {
+  if (audio.micStream) {
+    audio.micStream.getTracks().forEach(t => t.stop());
+    audio.micStream = null;
+    if (audio.audioCtx) { audio.audioCtx.close(); audio.audioCtx = null; }
+    if (audio.wfRaf) { cancelAnimationFrame(audio.wfRaf); audio.wfRaf = null; }
+    aEls.micOverlay.style.display = 'grid';
+    aEls.micToggle.textContent = '마이크 켜기';
+    aEls.capture.disabled = true;
+    aEls.liveDot.classList.remove('on');
+    audioStopInfer();
+    return;
+  }
+  try {
+    audio.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audio.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = audio.audioCtx.createMediaStreamSource(audio.micStream);
+    audio.analyser = audio.audioCtx.createAnalyser();
+    audio.analyser.fftSize = 2048;
+    src.connect(audio.analyser);
+    aEls.micOverlay.style.display = 'none';
+    aEls.micToggle.textContent = '마이크 끄기';
+    aEls.capture.disabled = false;
+    aEls.liveDot.classList.add('on');
+    audioWaveformLoop();
+  } catch (e) {
+    aEls.micOverlay.innerHTML = '<div><div class="ph" style="color:#ef4444">MIC DENIED</div><div class="ph-msg">마이크 권한을 확인하세요</div></div>';
+  }
+}
+
+function audioWaveformLoop() {
+  if (!audio.analyser) return;
+  const cv = aEls.waveform;
+  const w = cv.clientWidth, h = cv.clientHeight;
+  cv.width = w; cv.height = h;
+  const ctx = cv.getContext('2d');
+  const buf = new Uint8Array(audio.analyser.fftSize);
+  audio.analyser.getByteTimeDomainData(buf);
+  ctx.clearRect(0, 0, w, h);
+  ctx.lineWidth = 2; ctx.strokeStyle = '#06b6d4'; ctx.beginPath();
+  const slice = w / buf.length;
+  for (let i = 0; i < buf.length; i++) {
+    const v = buf[i] / 128.0; const y = (v * h) / 2;
+    if (i === 0) ctx.moveTo(i * slice, y); else ctx.lineTo(i * slice, y);
+  }
+  ctx.stroke();
+  audio.wfRaf = requestAnimationFrame(audioWaveformLoop);
+}
+
+async function audioCapture() {
+  const sel = audio.classes.find(c => c.id === audio.selectedId);
+  if (!sel || !audio.base) return;
+  if (!audio.transfer) {
+    audio.transfer = audio.base.createTransfer('eddie-audio');
+  }
+  aEls.capture.disabled = true;
+  const oldText = aEls.capture.textContent;
+  aEls.capture.textContent = '녹음 중...';
+  try {
+    await audio.transfer.collectExample(String(sel.id));
+    sel.count++;
+    audioRenderClasses(); audioRefresh();
+  } catch (e) { console.error('[audio] collect fail:', e); }
+  aEls.capture.disabled = !audio.micStream;
+  aEls.capture.textContent = oldText;
+}
+
+async function audioTrain() {
+  if (!audio.transfer) return;
+  const counts = audio.classes.filter(c => c.count > 0);
+  if (counts.length < 2) return;
+  aEls.train.disabled = true; aEls.inferToggle.disabled = true;
+  const epochs = Math.max(5, Math.min(100, +aEls.epochs.value || 25));
+  try {
+    await audio.transfer.train({
+      epochs,
+      callback: {
+        onEpochEnd: async (ep, logs) => {
+          const p = Math.round(((ep + 1) / epochs) * 100);
+          aEls.trainBar.style.width = p + '%';
+          aEls.mEpoch.textContent = (ep + 1) + ' / ' + epochs;
+          aEls.mLoss.textContent = logs.loss.toFixed(3);
+          const acc = logs.acc ?? logs.accuracy;
+          aEls.mAcc.textContent = acc != null ? Math.round(acc * 100) + '%' : '—';
+        },
+      },
+    });
+    audio.trained = true;
+    aEls.train.disabled = false;
+    aEls.inferToggle.disabled = !audio.micStream;
+    aEls.trainHint.textContent = '학습 완료. 우측 [추론 시작]을 누르세요.';
+    audioRenderBars();
+  } catch (e) {
+    console.error('[audio] train fail:', e);
+    aEls.trainHint.textContent = '학습 실패: 각 단어당 최소 8회 녹음이 필요합니다.';
+    aEls.train.disabled = false;
+  }
+}
+
+function audioRenderBars() {
+  renderProbBars(aEls.bars, audio.classes, (i) => `a-pct-${i}`, (i) => `a-fill-${i}`);
+}
+
+async function audioStartInfer() {
+  if (!audio.trained || !audio.transfer) return;
+  audio.inferring = true;
+  aEls.inferToggle.textContent = '추론 중지';
+  aEls.inferMeta.textContent = 'LIVE';
+  const labels = audio.transfer.wordLabels();
+  await audio.transfer.listen(result => {
+    const scores = Array.from(result.scores);
+    const idToIdx = {};
+    audio.classes.forEach((c, i) => { idToIdx[String(c.id)] = i; });
+    audio.classes.forEach((c, i) => {
+      const li = labels.indexOf(String(c.id));
+      const pct = li >= 0 ? Math.round(scores[li] * 100) : 0;
+      const pctEl = $('a-pct-'+i); const fillEl = $('a-fill-'+i);
+      if (pctEl) pctEl.textContent = pct + '%';
+      if (fillEl) fillEl.style.width = pct + '%';
+    });
+    let topI = 0, topV = 0;
+    audio.classes.forEach((c, i) => {
+      const li = labels.indexOf(String(c.id));
+      if (li >= 0 && scores[li] > topV) { topV = scores[li]; topI = i; }
+    });
+    if (topV > 0.5) {
+      aEls.topPred.className = 'top-pred active';
+      aEls.topPred.querySelector('.tp-name').textContent = audio.classes[topI].name;
+      aEls.topPred.querySelector('.tp-conf').textContent = Math.round(topV*100) + '%';
+    }
+  }, { probabilityThreshold: 0.5, overlapFactor: 0.5 });
+}
+async function audioStopInfer() {
+  audio.inferring = false;
+  aEls.inferToggle.textContent = '추론 시작';
+  aEls.inferMeta.textContent = 'IDLE';
+  if (audio.transfer && audio.transfer.isListening()) {
+    try { await audio.transfer.stopListening(); } catch {}
+  }
+  aEls.topPred.className = 'top-pred idle';
+  aEls.topPred.querySelector('.tp-name').textContent = audio.trained ? '대기 중' : '아직 학습 전';
+  aEls.topPred.querySelector('.tp-conf').textContent = '';
+}
+
+function audioRefresh() {
+  const counts = audio.classes.filter(c => c.count > 0);
+  aEls.train.disabled = counts.length < 2 || counts.some(c => c.count < 3);
+  audioRenderBars();
+  syncStepNav();
+}
+
+/* ============================================================
+   ▌ 사전학습 추론 — 객체 탐지 (COCO-SSD)
+   ============================================================ */
+const detect = { model: null, stream: null, raf: null, lastT: 0, threshold: 0.5 };
+const dEls = {
+  video: $('d-webcam'), overlay: $('d-overlay'), camOverlay: $('d-cam-overlay'),
+  camToggle: $('d-cam-toggle'), list: $('d-list'),
+  status: $('d-status'), fps: $('d-fps'), count: $('d-count'),
+};
+
+async function detectInit() {
+  dEls.camToggle.addEventListener('click', detectToggle);
+  const thr = document.getElementById('d-thr');
+  if (thr) thr.addEventListener('input', () => {
+    detect.threshold = (+thr.value) / 100;
+    const v = document.getElementById('d-thr-val'); if (v) v.textContent = thr.value + '%';
+  });
+}
+async function detectToggle() {
+  if (detect.stream) {
+    detect.stream.getTracks().forEach(t => t.stop());
+    detect.stream = null; dEls.video.srcObject = null;
+    if (detect.raf) cancelAnimationFrame(detect.raf);
+    dEls.camOverlay.style.display = 'grid';
+    dEls.camToggle.textContent = '카메라 켜기 · 탐지 시작';
+    dEls.status.textContent = 'IDLE'; dEls.fps.textContent = '—';
+    dEls.list.innerHTML = ''; dEls.count.textContent = '0';
+    const ctx = dEls.overlay.getContext('2d');
+    ctx.clearRect(0, 0, dEls.overlay.width, dEls.overlay.height);
+    return;
+  }
+  if (!window.cocoSsd) { console.error('[detect] cocoSsd missing'); return; }
+  dEls.status.textContent = 'LOADING';
+  try {
+    if (!detect.model) detect.model = await cocoSsd.load();
+    detect.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    dEls.video.srcObject = detect.stream;
+    dEls.camOverlay.style.display = 'none';
+    dEls.camToggle.textContent = '카메라 끄기';
+    dEls.status.textContent = 'LIVE';
+    detect.lastT = performance.now();
+    detectLoop();
+  } catch (e) { console.error('[detect] fail:', e); dEls.status.textContent = 'ERROR'; }
+}
+async function detectLoop() {
+  if (!detect.stream || !detect.model) return;
+  if (dEls.video.readyState >= 2) {
+    const vw = dEls.video.videoWidth, vh = dEls.video.videoHeight;
+    dEls.overlay.width = vw; dEls.overlay.height = vh;
+    try {
+      const preds = (await detect.model.detect(dEls.video)).filter((p) => p.score >= detect.threshold);
+      const ctx = dEls.overlay.getContext('2d');
+      ctx.clearRect(0, 0, vw, vh);
+      ctx.font = 'bold 16px JetBrains Mono';
+      preds.forEach(p => {
+        const [x, y, w, h] = p.bbox;
+        const mx = vw - x - w; // 비디오가 좌우 반전 표시되므로 박스 X 좌표만 반전(텍스트는 정상 유지)
+        ctx.strokeStyle = '#00ff88'; ctx.lineWidth = 3;
+        ctx.strokeRect(mx, y, w, h);
+        const label = `${p.class} ${Math.round(p.score*100)}%`;
+        const tw = ctx.measureText(label).width;
+        ctx.fillStyle = '#00ff88';
+        ctx.fillRect(mx, y - 20, tw + 10, 20);
+        ctx.fillStyle = '#000'; ctx.fillText(label, mx + 5, y - 5);
+      });
+      dEls.count.textContent = preds.length;
+      dEls.list.innerHTML = preds.slice(0, 8).map(p => {
+        const pct = Math.round(p.score * 100);
+        return `<div class="det-row">
+          <div class="det-head"><span>${p.class}</span><span class="det-pct">${pct}%</span></div>
+          <div class="gauge"><div class="gauge-fill" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+      const now = performance.now();
+      const fps = 1000 / (now - detect.lastT); detect.lastT = now;
+      dEls.fps.textContent = fps.toFixed(1);
+    } catch (e) { /* skip frame */ }
+  }
+  detect.raf = requestAnimationFrame(detectLoop);
+}
+
+/* ============================================================
+   ▌ 사전학습 추론 — 인물 분리 (BodyPix)
+   ============================================================ */
+const seg = { net: null, stream: null, raf: null, mode: 'remove', lastT: 0 };
+const sEls = {
+  video: $('s-webcam'), canvas: $('s-canvas'), camOverlay: $('s-cam-overlay'),
+  camToggle: $('s-cam-toggle'), modeToggle: $('s-mode-toggle'),
+  status: $('s-status'), fps: $('s-fps'),
+  personPx: $('s-person-px'), ratio: $('s-ratio'), ratioBar: $('s-ratio-bar'),
+};
+async function segmentInit() {
+  sEls.camToggle.addEventListener('click', segmentToggle);
+  sEls.modeToggle.addEventListener('click', () => {
+    seg.mode = seg.mode === 'remove' ? 'highlight' : 'remove';
+    // 버튼은 '전환하면 될 모드'를 표시 (현재 모드와 반대)
+    sEls.modeToggle.textContent = seg.mode === 'remove' ? '인물 강조로 전환' : '배경 제거로 전환';
+  });
+}
+async function segmentToggle() {
+  if (seg.stream) {
+    seg.stream.getTracks().forEach(t => t.stop());
+    seg.stream = null; sEls.video.srcObject = null;
+    if (seg.raf) cancelAnimationFrame(seg.raf);
+    sEls.camOverlay.style.display = 'grid';
+    sEls.camToggle.textContent = '카메라 켜기 · 분리 시작';
+    sEls.status.textContent = 'IDLE';
+    const ctx = sEls.canvas.getContext('2d');
+    ctx.clearRect(0, 0, sEls.canvas.width, sEls.canvas.height);
+    return;
+  }
+  if (!window.bodyPix) { console.error('[seg] bodyPix missing'); return; }
+  sEls.status.textContent = 'LOADING';
+  try {
+    if (!seg.net) seg.net = await bodyPix.load({ architecture: 'MobileNetV1', outputStride: 16, multiplier: 0.75 });
+    seg.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    sEls.video.srcObject = seg.stream;
+    await sEls.video.play().catch(() => {});
+    sEls.camOverlay.style.display = 'none';
+    sEls.camToggle.textContent = '카메라 끄기';
+    sEls.status.textContent = 'LIVE';
+    seg.lastT = performance.now();
+    segmentLoop();
+  } catch (e) { console.error('[seg] fail:', e); sEls.status.textContent = 'ERROR'; }
+}
+async function segmentLoop() {
+  if (!seg.stream || !seg.net) return;
+  if (sEls.video.readyState >= 2) {
+    const vw = sEls.video.videoWidth, vh = sEls.video.videoHeight;
+    sEls.canvas.width = vw; sEls.canvas.height = vh;
+    try {
+      const segmentation = await seg.net.segmentPerson(sEls.video, { internalResolution: 'medium', segmentationThreshold: 0.6 });
+      const ctx = sEls.canvas.getContext('2d');
+      const mask = segmentation.data;
+      // 비디오를 배경 레이어로 그대로 노출하고 캔버스는 투명 오버레이로만 사용한다.
+      // (가려진 비디오를 drawImage 하면 일부 브라우저에서 검은 프레임이 나오는 문제 회피)
+      const img = ctx.createImageData(vw, vh);
+      const data = img.data;
+      let personPx = 0;
+      for (let i = 0; i < mask.length; i++) {
+        const o = i * 4;
+        if (mask[i] === 1) {
+          personPx++;
+          if (seg.mode === 'highlight') {
+            // 인물에 진한 시안 틴트 (배경은 투명 → 원본 영상 노출)
+            data[o] = 0; data[o+1] = 220; data[o+2] = 255; data[o+3] = 205;
+          }
+          // remove 모드: 인물은 투명 → 뒤 비디오가 그대로 보임
+        } else if (seg.mode === 'remove') {
+          // 배경을 선명한 그린(크로마키 느낌)으로 완전히 덮어 분리를 명확히 표시
+          data[o] = 16; data[o+1] = 185; data[o+2] = 129; data[o+3] = 255;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+      const total = mask.length;
+      const ratioPct = personPx * 100 / total;
+      sEls.personPx.textContent = personPx.toLocaleString();
+      sEls.ratio.textContent = ratioPct.toFixed(1) + '%';
+      if (sEls.ratioBar) sEls.ratioBar.style.width = ratioPct.toFixed(1) + '%';
+      const now = performance.now();
+      const fps = 1000 / (now - seg.lastT); seg.lastT = now;
+      sEls.fps.textContent = fps.toFixed(1);
+    } catch (e) { /* skip */ }
+  }
+  seg.raf = requestAnimationFrame(segmentLoop);
+}
+
+/* ============================================================
+   ▌ 영상처리 — 영상 필터 (CSS 필터) + 모션 감지 (프레임 차분)
+   ============================================================ */
+const ff = { stream: null, raf: null, mode: 'none', prev: null, lastT: 0, params: { bright: 100, contrast: 100, blur: 0 } };
+const ffEls = {
+  video: $('ff-webcam'), canvas: $('ff-canvas'), camOverlay: $('ff-cam-overlay'),
+  camToggle: $('ff-cam-toggle'), status: $('ff-status'), fps: $('ff-fps'),
+  motion: $('ff-motion'), motionBar: $('ff-motion-bar'), modeName: $('ff-mode-name'),
+};
+const FF_CSS = { none: '', gray: 'grayscale(1)', invert: 'invert(1)', contrast: 'grayscale(1) contrast(4) brightness(1.1)', blur: 'blur(6px)' };
+const FF_LABEL = { none: '원본', gray: '흑백', invert: '색 반전', contrast: '고대비', blur: '블러', motion: '모션 감지' };
+
+/* 모드 프리셋 + 사용자 파라미터(밝기/대비/블러)를 합성한 CSS 필터 문자열 */
+function ffBuildCSS() {
+  const p = ff.params;
+  const preset = ff.mode === 'motion' ? '' : (FF_CSS[ff.mode] || '');
+  return `${preset} brightness(${p.bright}%) contrast(${p.contrast}%) blur(${p.blur}px)`.trim();
+}
+function ffApply() {
+  if (ff.mode !== 'motion') ffEls.video.style.filter = ffBuildCSS();
+}
+function ffClearCanvas() {
+  const ctx = ffEls.canvas.getContext('2d');
+  ctx.clearRect(0, 0, ffEls.canvas.width, ffEls.canvas.height);
+}
+function ffResetMotion() {
+  ff.prev = null;
+  if (ffEls.motion) ffEls.motion.textContent = '—';
+  if (ffEls.motionBar) ffEls.motionBar.style.width = '0%';
+}
+
+function setFilterMode(mode) {
+  if (!FF_LABEL[mode]) return;
+  ff.mode = mode;
+  document.querySelectorAll('.ff-mode').forEach((b) => b.classList.toggle('active', b.dataset.fmode === mode));
+  ffEls.modeName.textContent = FF_LABEL[mode];
+  const mr = document.getElementById('ff-motion-row'); if (mr) mr.style.display = (mode === 'motion') ? '' : 'none';
+  if (mode === 'motion') {
+    ffEls.video.style.filter = '';
+    ffClearCanvas();
+    if (ff.stream) { if (ff.raf) cancelAnimationFrame(ff.raf); motionLoop(); }
+  } else {
+    if (ff.raf) cancelAnimationFrame(ff.raf);
+    ff.raf = null;
+    ffEls.video.style.filter = ffBuildCSS();
+    ffClearCanvas();
+    ffResetMotion();
+  }
+}
+
+async function filterToggle() {
+  if (ff.stream) {
+    ff.stream.getTracks().forEach((t) => t.stop());
+    ff.stream = null; ffEls.video.srcObject = null;
+    if (ff.raf) cancelAnimationFrame(ff.raf); ff.raf = null;
+    ffEls.video.style.filter = '';
+    ffClearCanvas(); ffResetMotion();
+    ffEls.camOverlay.style.display = 'grid';
+    ffEls.camToggle.textContent = '카메라 켜기';
+    ffEls.status.textContent = 'IDLE'; ffEls.fps.textContent = '—';
+    return;
+  }
+  try {
+    ff.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    ffEls.video.srcObject = ff.stream;
+    await ffEls.video.play().catch(() => {});
+    ffEls.camOverlay.style.display = 'none';
+    ffEls.camToggle.textContent = '카메라 끄기';
+    ffEls.status.textContent = 'LIVE';
+    setFilterMode(ff.mode); // 현재 모드 적용 (CSS 필터 or 모션 루프 시작)
+  } catch (e) {
+    ffEls.camOverlay.innerHTML = '<div><div class="ph" style="color:#ef4444">CAMERA DENIED</div><div class="ph-msg">브라우저 카메라 권한을 확인하세요</div></div>';
+  }
+}
+
+/* 모션 감지: tf.browser.fromPixels 로 프레임을 읽어(가려진 비디오에서도 안전한 WebGL 경로)
+   이전 프레임과의 밝기 차이가 큰 픽셀을 빨갛게 오버레이로 표시한다. */
+async function motionLoop() {
+  if (ff.mode !== 'motion' || !ff.stream) return;
+  if (ffEls.video.readyState >= 2 && window.tf) {
+    const W = 160, H = 120;
+    try {
+      const gray = tf.tidy(() => tf.image.resizeBilinear(tf.browser.fromPixels(ffEls.video), [H, W]).mean(2));
+      const cur = await gray.data(); gray.dispose();
+      if (ff.prev && ff.prev.length === cur.length) {
+        ffEls.canvas.width = W; ffEls.canvas.height = H;
+        const ctx = ffEls.canvas.getContext('2d');
+        const img = ctx.createImageData(W, H);
+        let moved = 0;
+        for (let i = 0; i < cur.length; i++) {
+          const o = i * 4;
+          if (Math.abs(cur[i] - ff.prev[i]) > 22) {
+            moved++;
+            img.data[o] = 255; img.data[o + 1] = 40; img.data[o + 2] = 70; img.data[o + 3] = 160;
+          }
+        }
+        ctx.putImageData(img, 0, 0);
+        const pct = moved * 100 / cur.length;
+        ffEls.motion.textContent = pct.toFixed(1) + '%';
+        ffEls.motionBar.style.width = Math.min(100, pct * 3).toFixed(0) + '%';
+      }
+      ff.prev = cur;
+      const now = performance.now();
+      ffEls.fps.textContent = (1000 / (now - ff.lastT)).toFixed(1); ff.lastT = now;
+    } catch (e) { /* skip frame */ }
+  }
+  ff.raf = requestAnimationFrame(motionLoop);
+}
+
+function filterInit() {
+  ffEls.camToggle.addEventListener('click', filterToggle);
+  document.querySelectorAll('.ff-mode').forEach((b) => {
+    b.addEventListener('click', () => setFilterMode(b.dataset.fmode));
+  });
+  // 파라미터 슬라이더 — 실시간으로 효과 합성
+  const bind = (id, key, unit) => {
+    const el = document.getElementById(id), val = document.getElementById(id + '-val');
+    if (!el) return;
+    el.addEventListener('input', () => {
+      ff.params[key] = +el.value;
+      if (val) val.textContent = el.value + unit;
+      ffApply();
+    });
+  };
+  bind('ff-bright', 'bright', '%');
+  bind('ff-contrast', 'contrast', '%');
+  bind('ff-blur', 'blur', 'px');
+  // 원본 비교 — 누르는 동안 필터 해제
+  const cmp = document.getElementById('ff-compare');
+  if (cmp) {
+    const showOrig = () => { if (ff.mode !== 'motion') ffEls.video.style.filter = ''; };
+    const restore = () => ffApply();
+    cmp.addEventListener('mousedown', showOrig);
+    cmp.addEventListener('touchstart', (e) => { e.preventDefault(); showOrig(); });
+    cmp.addEventListener('mouseup', restore);
+    cmp.addEventListener('mouseleave', restore);
+    cmp.addEventListener('touchend', restore);
+  }
+}
+
+/* ============================================================
+   ▌ 영상처리 — 뼈대(포즈) 검출 (MoveNet 재사용, 학습 없음)
+   ============================================================ */
+const skel = { stream: null, raf: null, lastT: 0, minScore: 0.3 };
+const skEls = {
+  video: $('sk-webcam'), canvas: $('sk-canvas'), camOverlay: $('sk-cam-overlay'),
+  camToggle: $('sk-cam-toggle'), status: $('sk-status'), fps: $('sk-fps'),
+  count: $('sk-count'), confBar: $('sk-conf-bar'),
+};
+function skelInit() {
+  skEls.camToggle.addEventListener('click', skelToggle);
+  const m = document.getElementById('sk-min');
+  if (m) m.addEventListener('input', () => { skel.minScore = (+m.value) / 100; const v = document.getElementById('sk-min-val'); if (v) v.textContent = m.value + '%'; });
+}
+async function skelToggle() {
+  if (skel.stream) {
+    skel.stream.getTracks().forEach((t) => t.stop());
+    skel.stream = null; skEls.video.srcObject = null;
+    if (skel.raf) cancelAnimationFrame(skel.raf); skel.raf = null;
+    skEls.canvas.getContext('2d').clearRect(0, 0, skEls.canvas.width, skEls.canvas.height);
+    skEls.camOverlay.style.display = 'grid';
+    skEls.camToggle.textContent = '카메라 켜기 · 뼈대 시작';
+    skEls.status.textContent = 'IDLE'; skEls.fps.textContent = '—'; skEls.count.textContent = '—';
+    return;
+  }
+  try {
+    skel.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    skEls.video.srcObject = skel.stream;
+    await skEls.video.play().catch(() => {});
+    skEls.camOverlay.style.display = 'none';
+    skEls.camToggle.textContent = '카메라 끄기';
+    skEls.status.textContent = pose.detector ? 'LIVE' : 'MODEL LOADING'; skel.lastT = performance.now();
+    skelLoop();
+  } catch (e) {
+    skEls.camOverlay.innerHTML = '<div><div class="ph" style="color:#ef4444">CAMERA DENIED</div><div class="ph-msg">브라우저 카메라 권한을 확인하세요</div></div>';
+  }
+}
+async function skelLoop() {
+  if (!skel.stream) return;
+  if (skEls.video.readyState >= 2 && pose.detector) {
+    const vw = skEls.video.videoWidth, vh = skEls.video.videoHeight;
+    skEls.canvas.width = vw; skEls.canvas.height = vh;
+    try {
+      const poses = await pose.detector.estimatePoses(skEls.video);
+      const ctx = skEls.canvas.getContext('2d');
+      ctx.clearRect(0, 0, vw, vh);
+      let good = 0;
+      if (poses[0]) {
+        const kp = poses[0].keypoints;
+        ctx.strokeStyle = '#0066ff'; ctx.lineWidth = 3;
+        POSE_EDGES.forEach(([a, b]) => {
+          if (kp[a].score > skel.minScore && kp[b].score > skel.minScore) {
+            ctx.beginPath(); ctx.moveTo(kp[a].x, kp[a].y); ctx.lineTo(kp[b].x, kp[b].y); ctx.stroke();
+          }
+        });
+        ctx.fillStyle = '#06b6d4';
+        kp.forEach((p) => { if (p.score > skel.minScore) { good++; ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill(); } });
+      }
+      skEls.status.textContent = 'LIVE';
+      skEls.count.textContent = good + ' / 17';
+      if (skEls.confBar) skEls.confBar.style.width = Math.round(good / 17 * 100) + '%';
+      const now = performance.now();
+      skEls.fps.textContent = (1000 / (now - skel.lastT)).toFixed(1); skel.lastT = now;
+    } catch (e) { /* skip */ }
+  }
+  skel.raf = requestAnimationFrame(skelLoop);
+}
+
+/* ============================================================
+   ▌ 영상처리 — 얼굴 검출 (BlazeFace)
+   ============================================================ */
+const face = { model: null, stream: null, raf: null, lastT: 0 };
+const fcEls = {
+  video: $('fc-webcam'), canvas: $('fc-canvas'), camOverlay: $('fc-cam-overlay'),
+  camToggle: $('fc-cam-toggle'), status: $('fc-status'), fps: $('fc-fps'),
+  count: $('fc-count'), countBar: $('fc-count-bar'),
+};
+function faceInit() { fcEls.camToggle.addEventListener('click', faceToggle); }
+async function faceToggle() {
+  if (face.stream) {
+    face.stream.getTracks().forEach((t) => t.stop());
+    face.stream = null; fcEls.video.srcObject = null;
+    if (face.raf) cancelAnimationFrame(face.raf); face.raf = null;
+    fcEls.canvas.getContext('2d').clearRect(0, 0, fcEls.canvas.width, fcEls.canvas.height);
+    fcEls.camOverlay.style.display = 'grid';
+    fcEls.camToggle.textContent = '카메라 켜기 · 검출 시작';
+    fcEls.status.textContent = 'IDLE'; fcEls.fps.textContent = '—'; fcEls.count.textContent = '0';
+    return;
+  }
+  // 카메라를 먼저 켜고(모델 로드 실패와 무관하게 화면 표시), 모델은 이후 로드
+  try {
+    face.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    fcEls.video.srcObject = face.stream;
+    await fcEls.video.play().catch(() => {});
+    fcEls.camOverlay.style.display = 'none';
+    fcEls.camToggle.textContent = '카메라 끄기';
+    fcEls.status.textContent = 'LOADING'; face.lastT = performance.now();
+    faceLoop();
+  } catch (e) {
+    fcEls.camOverlay.innerHTML = '<div><div class="ph" style="color:#ef4444">CAMERA DENIED</div><div class="ph-msg">브라우저 카메라 권한을 확인하세요</div></div>';
+    return;
+  }
+  try {
+    if (!window.blazeface) { fcEls.status.textContent = '모델 없음'; return; }
+    if (!face.model) face.model = await blazeface.load();
+    fcEls.status.textContent = 'LIVE';
+  } catch (e) { console.error('[face] model:', e); fcEls.status.textContent = 'MODEL ERROR'; }
+}
+async function faceLoop() {
+  if (!face.stream) return;
+  if (face.model && fcEls.video.readyState >= 2) {
+    const vw = fcEls.video.videoWidth, vh = fcEls.video.videoHeight;
+    fcEls.canvas.width = vw; fcEls.canvas.height = vh;
+    try {
+      const preds = await face.model.estimateFaces(fcEls.video, false);
+      const ctx = fcEls.canvas.getContext('2d');
+      ctx.clearRect(0, 0, vw, vh);
+      ctx.font = 'bold 16px JetBrains Mono';
+      preds.forEach((p) => {
+        const x1 = p.topLeft[0], y1 = p.topLeft[1];
+        const w = p.bottomRight[0] - x1, h = p.bottomRight[1] - y1;
+        const mx = vw - x1 - w; // 비디오가 좌우 반전이므로 박스 X 반전(캔버스는 transform:none)
+        ctx.strokeStyle = '#f15a4f'; ctx.lineWidth = 3;
+        ctx.strokeRect(mx, y1, w, h);
+        const label = 'FACE ' + Math.round((Array.isArray(p.probability) ? p.probability[0] : p.probability) * 100) + '%';
+        const tw = ctx.measureText(label).width;
+        ctx.fillStyle = '#f15a4f'; ctx.fillRect(mx, y1 - 20, tw + 10, 20);
+        ctx.fillStyle = '#fff'; ctx.fillText(label, mx + 5, y1 - 5);
+      });
+      fcEls.count.textContent = preds.length;
+      if (fcEls.countBar) fcEls.countBar.style.width = Math.min(100, preds.length * 25) + '%';
+      const now = performance.now();
+      fcEls.fps.textContent = (1000 / (now - face.lastT)).toFixed(1); face.lastT = now;
+    } catch (e) { /* skip */ }
+  }
+  face.raf = requestAnimationFrame(faceLoop);
+}
+
+/* ============================================================
+   ▌ 영상처리 — 색상 추적 (RGB 임계값, tf.fromPixels 읽기 + 투명 오버레이)
+   ============================================================ */
+const ct = { stream: null, raf: null, lastT: 0, target: { r: 220, g: 50, b: 50 }, tol: 140 };
+const ctEls = {
+  video: $('ct-webcam'), canvas: $('ct-canvas'), camOverlay: $('ct-cam-overlay'),
+  camToggle: $('ct-cam-toggle'), status: $('ct-status'), fps: $('ct-fps'),
+  meta: $('ct-meta'), matchBar: $('ct-match-bar'),
+};
+function ctInit() {
+  ctEls.camToggle.addEventListener('click', ctToggle);
+  document.querySelectorAll('.ct-color').forEach((b) => b.addEventListener('click', () => {
+    ct.target = { r: +b.dataset.r, g: +b.dataset.g, b: +b.dataset.b };
+    document.querySelectorAll('.ct-color').forEach((x) => x.classList.toggle('active', x === b));
+  }));
+  const tol = document.getElementById('ct-tol');
+  if (tol) tol.addEventListener('input', () => { ct.tol = +tol.value; const v = document.getElementById('ct-tol-val'); if (v) v.textContent = tol.value; });
+  // 직접 색 입력 → 입력한 색을 추적 대상으로 (프리셋 선택 해제)
+  const pick = document.getElementById('ct-pick');
+  if (pick) pick.addEventListener('input', () => {
+    const h = pick.value;
+    ct.target = { r: parseInt(h.slice(1, 3), 16), g: parseInt(h.slice(3, 5), 16), b: parseInt(h.slice(5, 7), 16) };
+    document.querySelectorAll('.ct-color').forEach((x) => x.classList.remove('active'));
+  });
+}
+async function ctToggle() {
+  if (ct.stream) {
+    ct.stream.getTracks().forEach((t) => t.stop());
+    ct.stream = null; ctEls.video.srcObject = null;
+    if (ct.raf) cancelAnimationFrame(ct.raf); ct.raf = null;
+    ctEls.canvas.getContext('2d').clearRect(0, 0, ctEls.canvas.width, ctEls.canvas.height);
+    ctEls.camOverlay.style.display = 'grid';
+    ctEls.camToggle.textContent = '카메라 켜기 · 추적 시작';
+    ctEls.status.textContent = 'IDLE'; ctEls.fps.textContent = '—'; ctEls.meta.textContent = '—';
+    return;
+  }
+  try {
+    ct.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    ctEls.video.srcObject = ct.stream;
+    await ctEls.video.play().catch(() => {});
+    ctEls.camOverlay.style.display = 'none';
+    ctEls.camToggle.textContent = '카메라 끄기';
+    ctEls.status.textContent = 'LIVE'; ct.lastT = performance.now();
+    ctLoop();
+  } catch (e) {
+    ctEls.camOverlay.innerHTML = '<div><div class="ph" style="color:#ef4444">CAMERA DENIED</div><div class="ph-msg">브라우저 카메라 권한을 확인하세요</div></div>';
+  }
+}
+async function ctLoop() {
+  if (!ct.stream) return;
+  if (ctEls.video.readyState >= 2 && window.tf) {
+    const W = 160, H = 120;
+    try {
+      const t = tf.tidy(() => tf.image.resizeBilinear(tf.browser.fromPixels(ctEls.video), [H, W]));
+      const d = await t.data(); t.dispose();
+      ctEls.canvas.width = W; ctEls.canvas.height = H;
+      const ctx = ctEls.canvas.getContext('2d');
+      const img = ctx.createImageData(W, H);
+      const tg = ct.target; let matched = 0;
+      for (let i = 0; i < W * H; i++) {
+        const dist = Math.abs(d[i * 3] - tg.r) + Math.abs(d[i * 3 + 1] - tg.g) + Math.abs(d[i * 3 + 2] - tg.b);
+        const o = i * 4;
+        if (dist < ct.tol) { matched++; /* 매칭 → 투명(뒤 비디오 노출) */ }
+        else { img.data[o] = 8; img.data[o + 1] = 10; img.data[o + 2] = 16; img.data[o + 3] = 195; }
+      }
+      ctx.putImageData(img, 0, 0);
+      const pct = matched * 100 / (W * H);
+      ctEls.meta.textContent = pct.toFixed(1) + '%';
+      if (ctEls.matchBar) ctEls.matchBar.style.width = Math.min(100, pct * 4).toFixed(0) + '%';
+      const now = performance.now();
+      ctEls.fps.textContent = (1000 / (now - ct.lastT)).toFixed(1); ct.lastT = now;
+    } catch (e) { /* skip */ }
+  }
+  ct.raf = requestAnimationFrame(ctLoop);
+}
+
+/* ============================================================
+   ▌ 사전학습 추론 — 깊이 추정 (AR Portrait Depth)
+   ============================================================ */
+const depth = { estimator: null, stream: null, raf: null, lastT: 0 };
+const zEls = {
+  video: $('z-webcam'), canvas: $('z-canvas'), camOverlay: $('z-cam-overlay'),
+  camToggle: $('z-cam-toggle'),
+  status: $('z-status'), fps: $('z-fps'), min: $('z-min'), max: $('z-max'),
+};
+async function depthInit() {
+  zEls.camToggle.addEventListener('click', depthToggle);
+}
+async function depthToggle() {
+  if (depth.stream) {
+    depth.stream.getTracks().forEach(t => t.stop());
+    depth.stream = null; zEls.video.srcObject = null;
+    if (depth.raf) cancelAnimationFrame(depth.raf);
+    zEls.camOverlay.style.display = 'grid';
+    zEls.camToggle.textContent = '카메라 켜기 · 깊이 시작';
+    zEls.status.textContent = 'IDLE';
+    const ctx = zEls.canvas.getContext('2d');
+    ctx.clearRect(0, 0, zEls.canvas.width, zEls.canvas.height);
+    return;
+  }
+  if (!window.depthEstimation) { console.error('[depth] depthEstimation missing'); zEls.status.textContent = 'NOT AVAILABLE'; return; }
+  zEls.status.textContent = 'LOADING';
+  try {
+    if (!depth.estimator) {
+      depth.estimator = await depthEstimation.createEstimator(
+        depthEstimation.SupportedModels.ARPortraitDepth,
+        { minDepth: 0, maxDepth: 1 }
+      );
+    }
+    depth.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    zEls.video.srcObject = depth.stream;
+    zEls.camOverlay.style.display = 'none';
+    zEls.camToggle.textContent = '카메라 끄기';
+    zEls.status.textContent = 'LIVE';
+    depth.lastT = performance.now();
+    depthLoop();
+  } catch (e) { console.error('[depth] fail:', e); zEls.status.textContent = 'ERROR'; }
+}
+async function depthLoop() {
+  if (!depth.stream || !depth.estimator) return;
+  if (zEls.video.readyState >= 2) {
+    const vw = zEls.video.videoWidth, vh = zEls.video.videoHeight;
+    zEls.canvas.width = vw; zEls.canvas.height = vh;
+    try {
+      const d = await depth.estimator.estimateDepth(zEls.video, { minDepth: 0, maxDepth: 1 });
+      const depthCanvas = await d.toCanvasImageSource();
+      const ctx = zEls.canvas.getContext('2d');
+      ctx.drawImage(depthCanvas, 0, 0, vw, vh);
+      const now = performance.now();
+      const fps = 1000 / (now - depth.lastT); depth.lastT = now;
+      zEls.fps.textContent = fps.toFixed(1);
+      zEls.min.textContent = '0.0 (가까움)';
+      zEls.max.textContent = '1.0 (멈)';
+    } catch (e) { /* skip */ }
+  }
+  depth.raf = requestAnimationFrame(depthLoop);
+}
+
 /* ── 추론 ───────────────────────────────────────────── */
-function renderBars() {
-  const names = state.head?._classNames || state.classes.map(c => ({ name: c.name, color: c.color }));
-  els.bars.innerHTML = '';
+/* 신뢰도 막대 렌더 공통 로직 — 탭마다 컨테이너와 DOM id 접두사만 다르다.
+   pctId/fillId 는 인덱스를 받아 추론 루프가 참조하는 id 문자열을 만든다. */
+function renderProbBars(container, names, pctId, fillId) {
+  container.innerHTML = '';
   names.forEach((c, i) => {
     const row = document.createElement('div'); row.className = 'bar-row';
     row.innerHTML =
       `<div class="bar-head">
          <span class="bar-name"><span class="dot" style="background:${c.color}"></span>${c.name}</span>
-         <span class="bar-pct" id="pct-${i}">0%</span>
+         <span class="bar-pct" id="${pctId(i)}">0%</span>
        </div>
-       <div class="bar-track"><div class="bar-fill" id="bar-${i}" style="background:${c.color}"></div></div>`;
-    els.bars.appendChild(row);
+       <div class="bar-track"><div class="bar-fill" id="${fillId(i)}" style="background:${c.color}"></div></div>`;
+    container.appendChild(row);
   });
 }
+
+function renderBars() {
+  const names = state.head?._classNames || state.classes.map(c => ({ name: c.name, color: c.color }));
+  renderProbBars(els.bars, names, (i) => `pct-${i}`, (i) => `bar-${i}`);
+}
+/* 추론 결과 도넛 게이지 갱신 (frac 0~1) */
+function setDonut(prefix, frac, color) {
+  const C = 314.16;
+  const arc = document.getElementById(prefix + '-arc');
+  const pct = document.getElementById(prefix + '-pct');
+  if (arc) { arc.style.strokeDasharray = (frac * C).toFixed(1) + ' ' + C; if (color) arc.style.stroke = color; }
+  if (pct) pct.textContent = Math.round(frac * 100) + '%';
+}
+
 function resetTopPred() {
   els.topPred.className = 'top-pred idle';
   els.topPred.querySelector('.tp-name').textContent = '아직 학습 전';
   els.topPred.querySelector('.tp-conf').textContent = '';
   els.topPred.querySelector('.tp-name').style.color = '';
+  setDonut('top-donut', 0, 'var(--accent)');
 }
+/* 추론 결과를 신뢰도 막대에 반영하고 최상위 클래스 인덱스를 돌려준다.
+   특징 추출은 탭마다 다르지만 막대 갱신 로직은 공통이다. */
+function renderProbResults(probs, names, pctId, fillId) {
+  let topI = 0;
+  for (let i = 1; i < probs.length; i++) if (probs[i] > probs[topI]) topI = i;
+  names.forEach((c, i) => {
+    const pct = Math.round(probs[i] * 100);
+    const fill = $(fillId(i)), lab = $(pctId(i));
+    if (fill) fill.style.width = pct + '%';
+    if (lab) lab.textContent = pct + '%';
+  });
+  return topI;
+}
+
 async function inferLoop() {
   if (!state.inferring || !state.head || !state.stream) return;
   const probs = tf.tidy(() => {
@@ -1310,20 +3295,13 @@ async function inferLoop() {
     return state.head.predict(feat).dataSync();
   });
   const names = state.head._classNames;
-  let topI = 0;
-  probs.forEach((p, i) => { if (p > probs[topI]) topI = i; });
-
-  names.forEach((c, i) => {
-    const pct = Math.round(probs[i] * 100);
-    const bar = $('bar-' + i), lab = $('pct-' + i);
-    if (bar) bar.style.width = pct + '%';
-    if (lab) lab.textContent = pct + '%';
-  });
+  const topI = renderProbResults(probs, names, (i) => `pct-${i}`, (i) => `bar-${i}`);
 
   els.topPred.className = 'top-pred';
   els.topPred.querySelector('.tp-name').textContent = names[topI].name;
   els.topPred.querySelector('.tp-name').style.color = names[topI].color;
-  els.topPred.querySelector('.tp-conf').textContent = '신뢰도 ' + Math.round(probs[topI] * 100) + '%';
+  els.topPred.querySelector('.tp-conf').textContent = '확신도 ' + Math.round(probs[topI] * 100) + '%';
+  setDonut('top-donut', probs[topI], names[topI].color);
 
   requestAnimationFrame(inferLoop);
 }
@@ -1385,25 +3363,209 @@ els.capture.addEventListener('touchstart', (e) => { e.preventDefault(); startHol
 window.addEventListener('mouseup', endHold);
 window.addEventListener('touchend', endHold);
 
-document.querySelectorAll('.main-tab').forEach((tab) => {
-  tab.addEventListener('click', () => {
-    const target = tab.dataset.tab;
-    document.querySelectorAll('.main-tab').forEach((t) => t.classList.toggle('active', t === tab));
-    document.querySelectorAll('.tab-panel').forEach((p) => {
-      p.classList.toggle('active', p.id === 'panel-' + target);
-    });
+/* 탭/서브탭을 떠날 때 활성 카메라·마이크·추론 루프를 일괄 정리.
+   각 toggle 함수는 "켜져 있으면 끈다"는 토글 구조이므로,
+   활성 상태일 때만 호출하면 기존 teardown 로직(트랙 stop·RAF cancel)을 그대로 재사용한다. */
+function stopAllActivity() {
+  if (state.stream)    toggleCam();        // 이미지: 카메라 + stopInfer
+  if (pose.stream)     poseToggleCam();    // 동작: 카메라 + 추론 + 오버레이 루프
+  if (audio.micStream) audioToggleMic();   // 음성: 마이크 + 파형 루프 + stopInfer
+  if (audio.inferring) audioStopInfer();   // 음성 추론(listen)은 마이크와 독립이라 별도 정리
+  if (detect.stream)   detectToggle();     // 객체 탐지
+  if (seg.stream)      segmentToggle();    // 인물 분리
+  if (ff.stream)       filterToggle();     // 영상 필터/모션
+  if (ct.stream)       ctToggle();         // 색상 추적
+  if (skel.stream)     skelToggle();       // 뼈대 검출
+  if (face.stream)     faceToggle();       // 얼굴 검출
+  if (depth.stream)    depthToggle();      // 깊이 추정
+}
+
+/* 좌측 사이드바 기능 선택 — 도메인(AI 학습/영상처리) 아래 기능들을 평면으로 전환.
+   각 기능은 기존 패널(+서브패널)을 재사용하고, 상단 정보 카드를 함께 갱신한다. */
+const IC = (p) => `<svg class="ni-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+
+/* 기능 메타데이터 — 사이드바/정보카드가 모두 이 config 에서 생성된다.
+   기능 추가 = 이 객체에 항목 추가 + NAV_GROUPS 에 키 등록만 하면 된다. */
+const FEATURES = {
+  image:   { name: '이미지 분류', icon: IC('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/>'),
+    panel: 'panel-direct', type: '지도학습 · 전이학습', model: 'MobileNet v2', desc: '카메라로 직접 클래스를 만들어 사진을 분류합니다. 사전학습 특징에 분류 헤드만 학습합니다.' },
+  audio:   { name: '음성 분류', icon: IC('<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+    panel: 'panel-supervised', sub: 'sub-audio', type: '전이학습', model: 'Speech Commands', desc: '짧은 음성 명령을 녹음해 단어를 분류합니다.' },
+  pose:    { name: '동작 분류', icon: IC('<circle cx="12" cy="4" r="2"/><path d="M12 6v6m0 0l-4 6m4-6l4 6M6 9l6 1 6-1"/>'),
+    panel: 'panel-supervised', sub: 'sub-pose', type: '지도학습 · 전이학습', model: 'MoveNet', desc: '자세 키포인트(관절 위치)를 수집·학습해 동작을 분류합니다.' },
+  text:    { name: '텍스트 분류', icon: IC('<path d="M4 6h16M4 12h16M4 18h10"/>'), disabled: true, badge: '준비중',
+    type: '전이학습', model: 'USE', desc: '문장 임베딩 + 분류 헤드로 텍스트를 분류합니다. (준비 중)' },
+
+  filter:  { name: '영상 효과(필터)', icon: IC('<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/>'), badge: '알고리즘',
+    panel: 'panel-pretrained', sub: 'sub-filter', type: '영상처리 알고리즘', model: 'Canvas · 프레임 차분', desc: '흑백·색반전·고대비·블러 필터와 모션 감지를 실시간으로 체험합니다.' },
+  face:    { name: '얼굴 검출', icon: IC('<circle cx="12" cy="11" r="8"/><path d="M9 10h.01M15 10h.01M9 15s1.2 1.5 3 1.5 3-1.5 3-1.5"/>'), badge: '알고리즘', panel: 'panel-pretrained', sub: 'sub-face',
+    type: '영상처리 알고리즘', model: 'BlazeFace', desc: '얼굴 위치를 실시간 박스로 검출합니다(누구인지 식별이 아니라 위치 검출).' },
+  skeleton:{ name: '뼈대(포즈) 검출', icon: IC('<circle cx="12" cy="4" r="2"/><path d="M12 6v6m0 0l-4 6m4-6l4 6M6 9l6 1 6-1"/>'), badge: '알고리즘', panel: 'panel-pretrained', sub: 'sub-skeleton',
+    type: '영상처리 알고리즘', model: 'MoveNet', desc: '학습 없이 관절 뼈대를 실시간으로 그립니다.' },
+  colortrack:{ name: '색상 추적', icon: IC('<circle cx="9" cy="9" r="5"/><circle cx="16" cy="15" r="4"/>'), badge: '알고리즘',
+    panel: 'panel-pretrained', sub: 'sub-colortrack', type: '영상처리 알고리즘', model: 'RGB 임계값', desc: '선택한 색을 가진 영역만 남기고 배경을 어둡게 처리합니다. 색 물체를 들고 움직여 보세요.' },
+  detect:  { name: '객체 탐지', icon: IC('<path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/><rect x="8" y="8" width="8" height="8" rx="1"/>'), badge: '사전학습',
+    panel: 'panel-pretrained', sub: 'sub-detect', type: '사전학습 추론', model: 'COCO-SSD', desc: '추가 학습 없이 90종 사물을 실시간으로 박스 탐지합니다.' },
+  segment: { name: '인물 분리', icon: IC('<circle cx="12" cy="8" r="3.5"/><path d="M5 21c0-4 3.5-6 7-6s7 2 7 6"/>'), badge: '사전학습',
+    panel: 'panel-pretrained', sub: 'sub-segment', type: '사전학습 추론', model: 'BodyPix', desc: '사람과 배경을 픽셀 단위로 분리합니다(얼굴 인식·분류가 아닙니다).' },
+};
+
+/* 사이드바 그룹 구성 — 이 배열 순서대로 렌더된다. */
+const NAV_GROUPS = [
+  { title: 'AI 학습·추론 · 만드는 AI', items: ['image', 'audio', 'pose', 'text'] },
+  { title: 'AI 영상처리 · 체험하는 AI', items: ['filter', 'colortrack', 'face', 'skeleton', 'detect'] },
+];
+
+/* 단계 네비 — 학습추론/영상처리 기능군에 따라 단계 라벨이 다르다. */
+const LEARN_STEPS = ['클래스 만들기', '데이터 수집', '모델 학습', '추론·평가'];
+const VISION_STEPS = ['개념', '실행', '파라미터 조정'];
+NAV_GROUPS[0].items.forEach((k) => { if (FEATURES[k]) FEATURES[k].steps = LEARN_STEPS; });
+
+/* 이론 영역 — 학습 정보(데이터·목표·예시) + 알고리즘 정보(원리, K-12 눈높이) */
+const THEORY = {
+  image:   { learn: '내가 찍은 사진들이 데이터셋이 됩니다(보통 2~4종류). 목표는 카메라 사진을 내가 정한 종류로 자동 분류하기. 예: 캔·페트·종이 분리수거 도우미.',
+             algo:  'MobileNet이 사진의 특징을 뽑고, 그 위에 작은 분류기만 새로 학습합니다(전이학습). 적은 사진으로도 빠르게 배웁니다.' },
+  audio:   { learn: '단어마다 짧은 녹음 여러 개를 모읍니다. 목표는 말소리를 단어로 분류하기. 예: "켜"/"꺼"로 무언가 제어.',
+             algo:  '소리를 스펙트로그램(소리 사진)으로 바꿔 사전학습 모델이 특징을 뽑고, 분류기만 새로 학습합니다.' },
+  pose:    { learn: '동작마다 자세 데이터를 모읍니다. 목표는 몸 동작을 분류하기. 예: 만세/앉기 같은 자세 인식 게임.',
+             algo:  'MoveNet이 관절 17곳의 위치를 찾고, 그 좌표를 입력으로 작은 분류기를 학습합니다.' },
+  filter:  { learn: '학습이 필요 없는 고전 영상처리입니다. 목표는 픽셀을 바꾸면 화면이 어떻게 변하는지 체험하기.',
+             algo:  '각 픽셀의 색(R·G·B)을 규칙대로 바꿉니다. 흑백=평균, 색반전=255-값, 모션감지=이전 프레임과의 차이.' },
+  colortrack:{ learn: '학습이 필요 없습니다. 목표는 "특정 색 찾기"의 원리를 체험하기. 색 물체를 들고 움직여 보세요.',
+             algo:  '각 픽셀 색이 고른 색과 얼마나 가까운지(거리) 계산해, 가까우면 남기고 멀면 어둡게 가립니다(임계값).' },
+  face:    { learn: '대규모 얼굴 데이터로 미리 학습된 모델을 그대로 씁니다. 목표는 "검출"과 "인식"의 차이 이해하기.',
+             algo:  'BlazeFace가 화면을 훑어 얼굴이 있을 법한 위치에 상자를 칩니다. 누구인지까지는 알지 못합니다(위치만).' },
+  skeleton:{ learn: '미리 학습된 자세 추정 모델을 그대로 씁니다. 목표는 컴퓨터가 몸을 어떻게 "점과 선"으로 보는지 체험.',
+             algo:  'MoveNet이 관절 17곳을 찾아 점으로 찍고, 정해진 연결 규칙대로 선을 이어 뼈대를 그립니다.' },
+  detect:  { learn: 'COCO(90종 사물) 데이터로 미리 학습된 모델을 그대로 씁니다. 목표는 사전학습 모델의 힘 체험.',
+             algo:  'COCO-SSD가 화면을 한 번에 훑어 사물의 위치와 종류를 동시에 예측하고 상자·이름·확률을 표시합니다.' },
+};
+
+function buildSidebar() {
+  const nav = document.getElementById('sidebar');
+  nav.innerHTML = NAV_GROUPS.map((g) => `
+    <div class="nav-group">
+      <div class="nav-group-title">${g.title}</div>
+      ${g.items.map((key) => {
+        const f = FEATURES[key];
+        const badge = f.badge ? `<span class="nav-badge${f.disabled ? ' soon' : ''}">${f.badge}</span>` : '';
+        return `<button class="nav-item${f.disabled ? ' disabled' : ''}" data-feature="${key}"${f.disabled ? ' disabled' : ''}>
+          ${f.icon}<span class="ni-label">${f.name}</span>${badge}
+        </button>`;
+      }).join('')}
+    </div>`).join('');
+  nav.querySelectorAll('.nav-item:not(.disabled)').forEach((btn) => {
+    btn.addEventListener('click', () => selectFeature(btn.dataset.feature));
   });
-});
+}
+
+let currentFeature = 'image';
+
+/* 학습추론 기능의 진행 단계를 계산해 상단 StepNav 에 done/active 로 표시.
+   영상처리 기능은 진행 개념이 없어 클릭 하이라이트만 유지. */
+function syncStepNav() {
+  const sn = $('step-nav'); if (!sn) return;
+  const pills = sn.querySelectorAll('.step-pill'); if (!pills.length) return;
+  let done = null;
+  if (currentFeature === 'image') {
+    const u = state.classes.filter(c => c.embeddings.length > 0);
+    done = [state.classes.length >= 2, u.length >= 2, state.trained, state.inferring];
+  } else if (currentFeature === 'pose') {
+    const u = pose.classes.filter(c => c.embeddings.length > 0);
+    done = [pose.classes.length >= 2, u.length >= 2, pose.trained, pose.inferring];
+  } else if (currentFeature === 'audio') {
+    const u = audio.classes.filter(c => c.count > 0);
+    done = [audio.classes.length >= 2, u.length >= 2, audio.trained, audio.inferring];
+  }
+  if (!done) return; // 영상처리 기능
+  let active = 0;
+  done.forEach((d, i) => { if (d) active = Math.min(3, i + 1); });
+  pills.forEach((p, i) => {
+    p.classList.toggle('done', !!done[i]);
+    p.classList.toggle('active', i === active);
+  });
+}
+
+function selectFeature(key) {
+  const f = FEATURES[key];
+  if (!f || f.disabled || !f.panel) return;
+  currentFeature = key;
+  stopAllActivity();
+  document.querySelectorAll('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.feature === key));
+  document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('active', p.id === f.panel));
+  if (f.sub) {
+    document.getElementById(f.panel).querySelectorAll('.sub-panel').forEach((sp) => {
+      const on = sp.id === f.sub;
+      sp.classList.toggle('active', on);
+      sp.style.display = on ? '' : 'none';
+    });
+  }
+  $('fi-name').textContent = f.name;
+  $('fi-type').textContent = f.type;
+  $('fi-model').textContent = f.model;
+  $('fi-desc').textContent = f.desc;
+
+  // 이론 영역 (학습 정보 / 알고리즘 정보)
+  const th = THEORY[key], ft = $('fi-theory');
+  if (ft) {
+    if (th) { ft.style.display = ''; $('fi-learn').textContent = th.learn; $('fi-algo').textContent = th.algo; }
+    else ft.style.display = 'none';
+  }
+
+  // 상단 단계 네비 (config.steps 기반)
+  const sn = $('step-nav');
+  if (sn) {
+    if (f.steps && f.steps.length) {
+      sn.style.display = '';
+      sn.innerHTML = f.steps.map((s, i) =>
+        `<button class="step-pill${i === 0 ? ' active' : ''}" data-step="${i}"><span class="step-pill-num">${i + 1}</span>${s}</button>`
+      ).join('<span class="step-sep"></span>');
+      sn.querySelectorAll('.step-pill').forEach((b) => b.addEventListener('click', () => {
+        sn.querySelectorAll('.step-pill').forEach((x) => x.classList.toggle('active', x === b));
+      }));
+      syncStepNav(); // 학습추론 기능이면 진행상황 반영
+    } else {
+      sn.innerHTML = '';
+      sn.style.display = 'none';
+    }
+  }
+}
+
+buildSidebar();
+
+window.addEventListener('mouseup', poseEndHold);
+window.addEventListener('touchend', poseEndHold);
 
 document.getElementById('gallery-close').addEventListener('click', closeGallery);
 document.getElementById('gallery-overlay').addEventListener('click', (e) => {
   if (e.target.id === 'gallery-overlay') closeGallery();
 });
+document.getElementById('audio-rec-close').addEventListener('click', closeAudioRec);
+document.getElementById('audio-rec-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'audio-rec-overlay') closeAudioRec();
+});
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeGallery();
+  if (e.key === 'Escape') { closeGallery(); closeAudioRec(); }
 });
 
 init();
+poseInit();
+audioInit();
+detectInit();
+segmentInit();
+filterInit();
+ctInit();
+skelInit();
+faceInit();
+// depthInit(); // 깊이 추정(ARPortraitDepth)은 실험적·불안정으로 탭 숨김 처리 (JS는 휴면)
+
+selectFeature('image'); // 좌측 사이드바 초기 선택
+
+// 비보안 컨텍스트(예: LAN IP + HTTP)에서는 getUserMedia 가 권한 창 없이 차단됨 → 안내 배너
+if (!window.isSecureContext) {
+  const w = $('insecure-warn');
+  if (w) { w.style.display = 'block'; const o = $('insecure-origin'); if (o) o.textContent = location.host; }
+}
 </script>
 </body>
 </html>
