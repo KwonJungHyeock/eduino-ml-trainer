@@ -1464,7 +1464,12 @@
         <div class="card-h"><span class="label">MODEL</span><span class="meta">MOVENET</span></div>
         <div class="card-b">
           <p class="hint" style="margin:0 0 12px"><b>MoveNet</b>으로 사람의 관절 17개를 추정해 실시간 뼈대를 그립니다. 학습 없이 바로 동작합니다.</p>
-          <div class="metrics" style="margin-top:8px">
+          <div class="param">
+            <label class="param-label">관절 표시 민감도 <span id="sk-min-val">30%</span></label>
+            <input type="range" id="sk-min" min="10" max="70" value="30" class="slider">
+            <p class="param-hint">내리면 흐릿한 관절까지 표시, 올리면 확실한 관절만 표시합니다.</p>
+          </div>
+          <div class="metrics" style="margin-top:12px">
             <div><span class="k">KEYPOINTS</span><span class="v">17</span></div>
             <div><span class="k">STATUS</span><span class="v" id="sk-status">IDLE</span></div>
             <div><span class="k">FPS</span><span class="v" id="sk-fps">—</span></div>
@@ -1546,7 +1551,12 @@
             <button class="ct-color" data-r="50" data-g="110" data-b="230" style="background:#326ee6" title="파랑"></button>
             <button class="ct-color" data-r="235" data-g="210" data-b="55" style="background:#ebd237" title="노랑"></button>
           </div>
-          <div class="metrics" style="margin-top:14px;grid-template-columns:1fr 1fr">
+          <div class="param" style="margin-top:12px">
+            <label class="param-label">색 허용 범위 <span id="ct-tol-val">140</span></label>
+            <input type="range" id="ct-tol" min="60" max="260" value="140" class="slider">
+            <p class="param-hint">올리면 비슷한 색까지 폭넓게, 내리면 정확히 같은 색만 잡습니다.</p>
+          </div>
+          <div class="metrics" style="margin-top:12px;grid-template-columns:1fr 1fr">
             <div><span class="k">STATUS</span><span class="v" id="ct-status">IDLE</span></div>
             <div><span class="k">FPS</span><span class="v" id="ct-fps">—</span></div>
           </div>
@@ -2909,13 +2919,17 @@ function filterInit() {
 /* ============================================================
    ▌ 영상처리 — 뼈대(포즈) 검출 (MoveNet 재사용, 학습 없음)
    ============================================================ */
-const skel = { stream: null, raf: null, lastT: 0 };
+const skel = { stream: null, raf: null, lastT: 0, minScore: 0.3 };
 const skEls = {
   video: $('sk-webcam'), canvas: $('sk-canvas'), camOverlay: $('sk-cam-overlay'),
   camToggle: $('sk-cam-toggle'), status: $('sk-status'), fps: $('sk-fps'),
   count: $('sk-count'), confBar: $('sk-conf-bar'),
 };
-function skelInit() { skEls.camToggle.addEventListener('click', skelToggle); }
+function skelInit() {
+  skEls.camToggle.addEventListener('click', skelToggle);
+  const m = document.getElementById('sk-min');
+  if (m) m.addEventListener('input', () => { skel.minScore = (+m.value) / 100; const v = document.getElementById('sk-min-val'); if (v) v.textContent = m.value + '%'; });
+}
 async function skelToggle() {
   if (skel.stream) {
     skel.stream.getTracks().forEach((t) => t.stop());
@@ -2953,12 +2967,12 @@ async function skelLoop() {
         const kp = poses[0].keypoints;
         ctx.strokeStyle = '#0066ff'; ctx.lineWidth = 3;
         POSE_EDGES.forEach(([a, b]) => {
-          if (kp[a].score > 0.3 && kp[b].score > 0.3) {
+          if (kp[a].score > skel.minScore && kp[b].score > skel.minScore) {
             ctx.beginPath(); ctx.moveTo(kp[a].x, kp[a].y); ctx.lineTo(kp[b].x, kp[b].y); ctx.stroke();
           }
         });
         ctx.fillStyle = '#06b6d4';
-        kp.forEach((p) => { if (p.score > 0.3) { good++; ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill(); } });
+        kp.forEach((p) => { if (p.score > skel.minScore) { good++; ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill(); } });
       }
       skEls.status.textContent = 'LIVE';
       skEls.count.textContent = good + ' / 17';
@@ -3043,7 +3057,7 @@ async function faceLoop() {
 /* ============================================================
    ▌ 영상처리 — 색상 추적 (RGB 임계값, tf.fromPixels 읽기 + 투명 오버레이)
    ============================================================ */
-const ct = { stream: null, raf: null, lastT: 0, target: { r: 220, g: 50, b: 50 } };
+const ct = { stream: null, raf: null, lastT: 0, target: { r: 220, g: 50, b: 50 }, tol: 140 };
 const ctEls = {
   video: $('ct-webcam'), canvas: $('ct-canvas'), camOverlay: $('ct-cam-overlay'),
   camToggle: $('ct-cam-toggle'), status: $('ct-status'), fps: $('ct-fps'),
@@ -3055,6 +3069,8 @@ function ctInit() {
     ct.target = { r: +b.dataset.r, g: +b.dataset.g, b: +b.dataset.b };
     document.querySelectorAll('.ct-color').forEach((x) => x.classList.toggle('active', x === b));
   }));
+  const tol = document.getElementById('ct-tol');
+  if (tol) tol.addEventListener('input', () => { ct.tol = +tol.value; const v = document.getElementById('ct-tol-val'); if (v) v.textContent = tol.value; });
 }
 async function ctToggle() {
   if (ct.stream) {
@@ -3093,7 +3109,7 @@ async function ctLoop() {
       for (let i = 0; i < W * H; i++) {
         const dist = Math.abs(d[i * 3] - tg.r) + Math.abs(d[i * 3 + 1] - tg.g) + Math.abs(d[i * 3 + 2] - tg.b);
         const o = i * 4;
-        if (dist < 140) { matched++; /* 매칭 → 투명(뒤 비디오 노출) */ }
+        if (dist < ct.tol) { matched++; /* 매칭 → 투명(뒤 비디오 노출) */ }
         else { img.data[o] = 8; img.data[o + 1] = 10; img.data[o + 2] = 16; img.data[o + 3] = 195; }
       }
       ctx.putImageData(img, 0, 0);
