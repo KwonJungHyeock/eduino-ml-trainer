@@ -129,6 +129,17 @@ test('음성 녹음 관리 모달: 목록 표시 + 개별 삭제', async () => {
   assert.equal(doc.querySelectorAll('#audio-rec-grid .gallery-item').length, 1, '삭제 후 1개');
 });
 
+test('사이드바가 config 기반 2그룹으로 생성되고 준비중 항목은 비활성', async () => {
+  const { doc } = await loadApp();
+  assert.equal(doc.querySelectorAll('#sidebar .nav-group').length, 2);
+  assert.equal(doc.querySelectorAll('#sidebar .nav-item').length, 9);
+  const text = doc.querySelector('.nav-item[data-feature="text"]');
+  assert.equal(text.classList.contains('disabled'), true);
+  assert.match(text.querySelector('.nav-badge').textContent, /준비중/);
+  // 사전학습 뱃지
+  assert.match(doc.querySelector('.nav-item[data-feature="detect"] .nav-badge').textContent, /사전학습/);
+});
+
 test('영상 필터: 모드 버튼이 비디오에 CSS 필터를 적용한다', async () => {
   const { window, doc } = await loadApp();
   doc.querySelector('.nav-item[data-feature="filter"]').click();

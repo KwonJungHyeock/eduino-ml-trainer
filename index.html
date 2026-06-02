@@ -37,18 +37,23 @@
     --ink-4:        #94a3b8;
 
     /* 액센트 */
-    --blue:         #0066ff;     /* 일렉트릭 블루 — 메인 액션 */
+    --blue:         #0066ff;     /* 일렉트릭 블루 — 데이터 시각화 */
     --blue-soft:    #e6efff;
     --cyan:         #06b6d4;     /* 라이브/실행 표시 */
     --green:        #059669;     /* 학습완료 */
     --amber:        #d97706;     /* 추론 활성 */
     --rose:         #e11d48;     /* 위험/삭제 */
 
-    --shadow-sm:    0 1px 2px rgba(15,23,42,.04);
-    --shadow:       0 1px 3px rgba(15,23,42,.06), 0 4px 14px rgba(15,23,42,.04);
+    /* 메인 포인트 — 코랄 레드 (Eduino 커리큘럼 톤) */
+    --accent:       #f15a4f;
+    --accent-soft:  #fdecea;
+    --accent-ink:   #c8392e;
 
-    --radius:       10px;
-    --radius-sm:    6px;
+    --shadow-sm:    0 1px 2px rgba(15,23,42,.05);
+    --shadow:       0 2px 6px rgba(15,23,42,.06), 0 8px 24px rgba(15,23,42,.05);
+
+    --radius:       12px;
+    --radius-sm:    8px;
 
     --sans: 'Pretendard', -apple-system, sans-serif;
     --mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -259,19 +264,31 @@
     font-family: var(--sans); font-size: 13.5px; font-weight: 500; color: var(--ink-2);
     transition: .14s;
   }
-  .nav-item:hover:not(.active) { background: var(--panel-soft); color: var(--ink); }
-  .nav-item.active { background: var(--ink); color: #fff; }
+  .nav-item:hover:not(.active):not(.disabled) { background: rgba(255,255,255,.6); color: var(--ink); }
+  .nav-item.active {
+    background: var(--accent-soft); color: var(--accent-ink); font-weight: 600;
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+  .nav-item.disabled { opacity: .5; cursor: not-allowed; }
   .nav-item .ni-ic { width: 17px; height: 17px; flex: none; }
+  .ni-label { flex: 1; min-width: 0; }
+  .nav-badge {
+    font-family: var(--mono); font-size: 8.5px; font-weight: 600; letter-spacing: .03em;
+    padding: 2px 6px; border-radius: 999px; flex: none;
+    background: var(--accent-soft); color: var(--accent-ink); border: 1px solid #f6d3cf;
+  }
+  .nav-badge.soon { background: var(--panel-soft); color: var(--ink-4); border-color: var(--border); }
   .content { padding: 20px 24px 56px; min-width: 0; }
   .content main { max-width: none; margin: 0; padding: 0; }
 
   /* 기능 정보 요약 카드 */
   .feature-info {
-    background: linear-gradient(135deg, #ffffff 0%, #eef4ff 100%);
-    border: 1px solid var(--border); border-left: 3px solid var(--blue);
+    background: linear-gradient(135deg, #ffffff 0%, var(--accent-soft) 100%);
+    border: 1px solid var(--border); border-left: 3px solid var(--accent);
     border-radius: var(--radius); box-shadow: var(--shadow-sm);
     padding: 14px 18px; margin-bottom: 16px;
   }
+  .fi-model { background: var(--accent-soft) !important; color: var(--accent-ink) !important; border-color: #f6d3cf !important; }
   .fi-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .fi-name { font-size: 16px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
   .fi-type, .fi-model {
@@ -390,7 +407,7 @@
   }
   .card-h .label::before {
     content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-    background: var(--blue); margin-right: 8px; vertical-align: 1px;
+    background: var(--accent); margin-right: 8px; vertical-align: 1px;
   }
   .card-h .meta {
     font-family: var(--mono); font-size: 11px; color: var(--ink-4); letter-spacing: 0.04em;
@@ -570,9 +587,9 @@
   .btn:disabled { opacity: .4; cursor: not-allowed; }
 
   .btn.primary {
-    background: var(--ink); color: #fff; border-color: var(--ink);
+    background: var(--accent); color: #fff; border-color: var(--accent);
   }
-  .btn.primary:hover:not(:disabled) { background: #1f2937; border-color: #1f2937; }
+  .btn.primary:hover:not(:disabled) { background: #e04a40; border-color: #e04a40; }
 
   .btn.blue {
     background: var(--blue); color: #fff; border-color: var(--blue);
@@ -832,50 +849,7 @@
 
 <!-- ────────────── 좌측 사이드바 + 콘텐츠 ────────────── -->
 <div class="app-shell">
-  <nav class="sidebar">
-    <div class="nav-group">
-      <div class="nav-group-title">AI 학습</div>
-      <button class="nav-item active" data-feature="image">
-        <svg class="ni-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/>
-        </svg>
-        이미지 분류
-      </button>
-      <button class="nav-item" data-feature="pose">
-        <svg class="ni-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="4" r="2"/><path d="M12 6v6m0 0l-4 6m4-6l4 6M6 9l6 1 6-1"/>
-        </svg>
-        동작 분류
-      </button>
-      <button class="nav-item" data-feature="audio">
-        <svg class="ni-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>
-        </svg>
-        음성 분류
-      </button>
-    </div>
-    <div class="nav-group">
-      <div class="nav-group-title">영상처리</div>
-      <button class="nav-item" data-feature="detect">
-        <svg class="ni-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/><rect x="8" y="8" width="8" height="8" rx="1"/>
-        </svg>
-        객체 탐지
-      </button>
-      <button class="nav-item" data-feature="segment">
-        <svg class="ni-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="8" r="3.5"/><path d="M5 21c0-4 3.5-6 7-6s7 2 7 6"/>
-        </svg>
-        인물 분리
-      </button>
-      <button class="nav-item" data-feature="filter">
-        <svg class="ni-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/>
-        </svg>
-        영상 필터
-      </button>
-    </div>
-  </nav>
+  <nav class="sidebar" id="sidebar"></nav>
 
   <div class="content">
     <!-- 기능 정보 요약 카드 -->
@@ -2883,18 +2857,59 @@ function stopAllActivity() {
 
 /* 좌측 사이드바 기능 선택 — 도메인(AI 학습/영상처리) 아래 기능들을 평면으로 전환.
    각 기능은 기존 패널(+서브패널)을 재사용하고, 상단 정보 카드를 함께 갱신한다. */
+const IC = (p) => `<svg class="ni-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+
+/* 기능 메타데이터 — 사이드바/정보카드가 모두 이 config 에서 생성된다.
+   기능 추가 = 이 객체에 항목 추가 + NAV_GROUPS 에 키 등록만 하면 된다. */
 const FEATURES = {
-  image:   { name: '이미지 분류', panel: 'panel-direct',     type: '지도학습 · 전이학습', model: 'MobileNet v2',    desc: '카메라로 직접 클래스를 만들어 사진을 분류합니다. 사전학습 특징에 분류 헤드만 학습합니다.' },
-  pose:    { name: '동작 분류',   panel: 'panel-supervised', sub: 'sub-pose',  type: '지도학습 · 전이학습', model: 'MoveNet',         desc: '자세 키포인트(관절 위치)를 수집·학습해 동작을 분류합니다.' },
-  audio:   { name: '음성 분류',   panel: 'panel-supervised', sub: 'sub-audio', type: '전이학습',           model: 'Speech Commands', desc: '짧은 음성 명령을 녹음해 단어를 분류합니다.' },
-  detect:  { name: '객체 탐지',   panel: 'panel-pretrained', sub: 'sub-detect',  type: '사전학습 추론', model: 'COCO-SSD', desc: '추가 학습 없이 90종 사물을 실시간으로 박스 탐지합니다.' },
-  segment: { name: '인물 분리',   panel: 'panel-pretrained', sub: 'sub-segment', type: '사전학습 추론', model: 'BodyPix',  desc: '사람과 배경을 픽셀 단위로 분리합니다(얼굴 인식·분류가 아닙니다).' },
-  filter:  { name: '영상 필터',   panel: 'panel-pretrained', sub: 'sub-filter',  type: '영상처리 알고리즘', model: 'Canvas · 프레임 차분', desc: '흑백·색반전·고대비·블러 필터와 모션 감지를 실시간으로 체험합니다.' },
+  image:   { name: '이미지 분류', icon: IC('<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/>'),
+    panel: 'panel-direct', type: '지도학습 · 전이학습', model: 'MobileNet v2', desc: '카메라로 직접 클래스를 만들어 사진을 분류합니다. 사전학습 특징에 분류 헤드만 학습합니다.' },
+  audio:   { name: '음성 분류', icon: IC('<rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'),
+    panel: 'panel-supervised', sub: 'sub-audio', type: '전이학습', model: 'Speech Commands', desc: '짧은 음성 명령을 녹음해 단어를 분류합니다.' },
+  pose:    { name: '동작 분류', icon: IC('<circle cx="12" cy="4" r="2"/><path d="M12 6v6m0 0l-4 6m4-6l4 6M6 9l6 1 6-1"/>'),
+    panel: 'panel-supervised', sub: 'sub-pose', type: '지도학습 · 전이학습', model: 'MoveNet', desc: '자세 키포인트(관절 위치)를 수집·학습해 동작을 분류합니다.' },
+  text:    { name: '텍스트 분류', icon: IC('<path d="M4 6h16M4 12h16M4 18h10"/>'), disabled: true, badge: '준비중',
+    type: '전이학습', model: 'USE', desc: '문장 임베딩 + 분류 헤드로 텍스트를 분류합니다. (준비 중)' },
+
+  filter:  { name: '영상 효과(필터)', icon: IC('<circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/>'), badge: '알고리즘',
+    panel: 'panel-pretrained', sub: 'sub-filter', type: '영상처리 알고리즘', model: 'Canvas · 프레임 차분', desc: '흑백·색반전·고대비·블러 필터와 모션 감지를 실시간으로 체험합니다.' },
+  face:    { name: '얼굴 검출', icon: IC('<circle cx="12" cy="11" r="8"/><path d="M9 10h.01M15 10h.01M9 15s1.2 1.5 3 1.5 3-1.5 3-1.5"/>'), disabled: true, badge: '준비중',
+    type: '영상처리 알고리즘', model: 'BlazeFace', desc: '얼굴 위치를 실시간 박스로 검출합니다. (준비 중)' },
+  skeleton:{ name: '뼈대(포즈) 검출', icon: IC('<circle cx="12" cy="4" r="2"/><path d="M12 6v6m0 0l-4 6m4-6l4 6M6 9l6 1 6-1"/>'), disabled: true, badge: '준비중',
+    type: '영상처리 알고리즘', model: 'MoveNet', desc: '학습 없이 관절 뼈대를 실시간으로 그립니다. (준비 중)' },
+  detect:  { name: '객체 탐지', icon: IC('<path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3"/><rect x="8" y="8" width="8" height="8" rx="1"/>'), badge: '사전학습',
+    panel: 'panel-pretrained', sub: 'sub-detect', type: '사전학습 추론', model: 'COCO-SSD', desc: '추가 학습 없이 90종 사물을 실시간으로 박스 탐지합니다.' },
+  segment: { name: '인물 분리', icon: IC('<circle cx="12" cy="8" r="3.5"/><path d="M5 21c0-4 3.5-6 7-6s7 2 7 6"/>'), badge: '사전학습',
+    panel: 'panel-pretrained', sub: 'sub-segment', type: '사전학습 추론', model: 'BodyPix', desc: '사람과 배경을 픽셀 단위로 분리합니다(얼굴 인식·분류가 아닙니다).' },
 };
+
+/* 사이드바 그룹 구성 — 이 배열 순서대로 렌더된다. */
+const NAV_GROUPS = [
+  { title: 'AI 학습·추론 · 만드는 AI', items: ['image', 'audio', 'pose', 'text'] },
+  { title: 'AI 영상처리 · 체험하는 AI', items: ['filter', 'face', 'skeleton', 'detect', 'segment'] },
+];
+
+function buildSidebar() {
+  const nav = document.getElementById('sidebar');
+  nav.innerHTML = NAV_GROUPS.map((g) => `
+    <div class="nav-group">
+      <div class="nav-group-title">${g.title}</div>
+      ${g.items.map((key) => {
+        const f = FEATURES[key];
+        const badge = f.badge ? `<span class="nav-badge${f.disabled ? ' soon' : ''}">${f.badge}</span>` : '';
+        return `<button class="nav-item${f.disabled ? ' disabled' : ''}" data-feature="${key}"${f.disabled ? ' disabled' : ''}>
+          ${f.icon}<span class="ni-label">${f.name}</span>${badge}
+        </button>`;
+      }).join('')}
+    </div>`).join('');
+  nav.querySelectorAll('.nav-item:not(.disabled)').forEach((btn) => {
+    btn.addEventListener('click', () => selectFeature(btn.dataset.feature));
+  });
+}
 
 function selectFeature(key) {
   const f = FEATURES[key];
-  if (!f) return;
+  if (!f || f.disabled || !f.panel) return;
   stopAllActivity();
   document.querySelectorAll('.nav-item').forEach((b) => b.classList.toggle('active', b.dataset.feature === key));
   document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('active', p.id === f.panel));
@@ -2911,9 +2926,7 @@ function selectFeature(key) {
   $('fi-desc').textContent = f.desc;
 }
 
-document.querySelectorAll('.nav-item').forEach((btn) => {
-  btn.addEventListener('click', () => selectFeature(btn.dataset.feature));
-});
+buildSidebar();
 
 window.addEventListener('mouseup', poseEndHold);
 window.addEventListener('touchend', poseEndHold);
