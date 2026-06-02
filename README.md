@@ -91,22 +91,26 @@ npm test
 
 ---
 
-## 데스크톱 앱 (.exe) 빌드
+## 데스크톱에서 실행
 
-바탕화면에서 더블클릭으로 실행하는 독립 앱은 **Electron** 으로 패키징합니다. (카메라는 `file://` 보안 컨텍스트 + 권한 핸들러로 정상 동작)
+### 방법 A — 더블클릭 런처 (권장 · 가장 안정적)
+프로젝트 폴더의 **`start-app.bat` 을 더블클릭**하면 로컬 서버가 켜지고 브라우저로 앱이 열립니다(카메라 정상). 바탕화면에서 쓰려면 `start-app.bat` 우클릭 → **보내기 → 바탕 화면에 바로 가기 만들기**.
+- 별도 설치 불필요(Node 의 `npx http-server` 사용), 사용을 마치면 "서버" 창을 닫으면 종료.
+
+### 방법 B — Electron 단일 앱(.exe) (선택 · 환경 영향 큼)
+독립 앱 창/단일 .exe 가 필요하면 Electron 으로 패키징합니다.
 
 ```bash
-npm install          # 최초 1회 (electron, electron-builder 포함)
-npm run app          # 개발 실행 (바로 앱 창 띄우기 — 빌드 불필요)
-npm run dist         # 배포본 빌드 → dist/ 에 포터블 .exe 생성 (Windows)
+npm install          # 최초 1회 (electron, electron-builder 포함, 수백 MB 다운로드)
+npm run app          # 앱 창으로 바로 실행
+npm run dist         # 포터블 .exe 빌드 → dist/
 ```
 
-- **가장 쉬운 실행**: 빌드 없이 `npm run app`, 또는 프로젝트 폴더의 **`start-app.bat` 더블클릭**(바탕화면 바로가기로 만들면 더 편리).
-- `dist/Eduino AI Lab *.exe` 를 바탕화면에 두고 더블클릭하면 실행됩니다(설치 불필요, 포터블).
-- **`npm run dist` 가 `winCodeSign … symbolic link` 오류로 멈추면** Windows 권한 문제입니다. 둘 중 하나로 해결:
-  - **개발자 모드 켜기** (설정 → 개인 정보 및 보안 → 개발자용 → 개발자 모드 ON) 후 다시 `npm run dist` — 관리자 권한 불필요, 권장
-  - 또는 터미널을 **관리자 권한으로 실행**한 뒤 `npm run dist`
-- 앱 아이콘을 바꾸려면 `build/icon.ico` 를 추가하고 `package.json > build.win.icon` 을 지정하세요.
+> ⚠️ Electron 은 본체 바이너리 다운로드와 코드서명(winCodeSign) 단계에서 환경에 따라 실패할 수 있습니다.
+> - `Electron failed to install correctly` → `node_modules\electron` 삭제 후 `npm install electron -D` 재설치(네트워크 양호 필요).
+> - `npm run dist` 의 `winCodeSign … symbolic link` 오류 → **개발자 모드 ON**(설정 → 개인 정보 및 보안 → 개발자용) 또는 **관리자 권한 터미널**.
+> 번거로우면 **방법 A** 를 쓰세요(동일하게 바탕화면 더블클릭 실행).
+
 - 모델(TensorFlow.js)은 최초 실행 시 CDN 에서 받으므로 **첫 실행은 인터넷 필요**, 이후 캐시됩니다.
 
 ---
