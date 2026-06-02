@@ -97,11 +97,15 @@ npm test
 
 ```bash
 npm install          # 최초 1회 (electron, electron-builder 포함)
-npm run app          # 개발 실행 (바로 앱 창 띄우기)
+npm run app          # 개발 실행 (바로 앱 창 띄우기 — 빌드 불필요)
 npm run dist         # 배포본 빌드 → dist/ 에 포터블 .exe 생성 (Windows)
 ```
 
+- **가장 쉬운 실행**: 빌드 없이 `npm run app`, 또는 프로젝트 폴더의 **`start-app.bat` 더블클릭**(바탕화면 바로가기로 만들면 더 편리).
 - `dist/Eduino AI Lab *.exe` 를 바탕화면에 두고 더블클릭하면 실행됩니다(설치 불필요, 포터블).
+- **`npm run dist` 가 `winCodeSign … symbolic link` 오류로 멈추면** Windows 권한 문제입니다. 둘 중 하나로 해결:
+  - **개발자 모드 켜기** (설정 → 개인 정보 및 보안 → 개발자용 → 개발자 모드 ON) 후 다시 `npm run dist` — 관리자 권한 불필요, 권장
+  - 또는 터미널을 **관리자 권한으로 실행**한 뒤 `npm run dist`
 - 앱 아이콘을 바꾸려면 `build/icon.ico` 를 추가하고 `package.json > build.win.icon` 을 지정하세요.
 - 모델(TensorFlow.js)은 최초 실행 시 CDN 에서 받으므로 **첫 실행은 인터넷 필요**, 이후 캐시됩니다.
 
