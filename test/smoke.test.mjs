@@ -194,11 +194,12 @@ test('이론 영역(학습/알고리즘 정보)이 기능별로 갱신된다', a
   assert.match(doc.getElementById('fi-algo').textContent, /COCO-SSD/);
 });
 
-test('단계 네비가 기능군에 맞춰 렌더된다 (학습 4 / 영상처리 3)', async () => {
+test('단계 네비: 학습 기능은 4단계, 영상처리는 표시 안 함', async () => {
   const { doc } = await loadApp();
   assert.equal(doc.querySelectorAll('#step-nav .step-pill').length, 4);
   doc.querySelector('.nav-item[data-feature="detect"]').click();
-  assert.equal(doc.querySelectorAll('#step-nav .step-pill').length, 3);
+  assert.equal(doc.querySelectorAll('#step-nav .step-pill').length, 0);
+  assert.equal(doc.getElementById('step-nav').style.display, 'none');
 });
 
 test('영상 필터: 모드 버튼이 비디오에 CSS 필터를 적용한다', async () => {

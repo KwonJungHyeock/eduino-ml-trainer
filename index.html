@@ -1123,7 +1123,7 @@
         </div>
         <div class="card-b">
           <div id="p-class-list"></div>
-          <button class="btn ghost" id="p-add-class" style="width:100%;margin-top:6px">+ 동작 추가</button>
+          <button class="btn ghost" id="p-add-class" style="width:100%;margin-top:6px">+ 클래스 추가</button>
           <p class="hint">동작을 만들고 클래스를 클릭하여 그 동작 자세로 데이터를 모으세요. (예: 팔 들기, 앉기, T자세)</p>
         </div>
       </aside>
@@ -1206,7 +1206,7 @@
               <div id="p-confusion-table-wrap"></div>
             </div>
 
-            <p class="hint" id="p-train-hint">동작 2개 이상, 각각에 자세 데이터가 있어야 학습할 수 있습니다.</p>
+            <p class="hint" id="p-train-hint">클래스 2개 이상, 각각에 자세 데이터가 있어야 학습할 수 있습니다.</p>
           </div>
         </div>
       </section>
@@ -1238,13 +1238,13 @@
     <div id="sub-audio" class="sub-panel" style="display:none">
       <aside class="card">
         <div class="card-h">
-          <span class="label">AUDIO CLASSES</span>
+          <span class="label">CLASSES</span>
           <span class="meta" id="a-class-count-meta">0 / 4</span>
         </div>
         <div class="card-b">
           <div id="a-class-list"></div>
-          <button class="btn ghost" id="a-add-class" style="width:100%;margin-top:6px">+ 단어 추가</button>
-          <p class="hint">단어를 만들고 클래스를 선택해 마이크에 1초씩 녹음합니다. (예: 켜, 꺼, 시작)</p>
+          <button class="btn ghost" id="a-add-class" style="width:100%;margin-top:6px">+ 클래스 추가</button>
+          <p class="hint">클래스를 만들고 선택해 마이크에 1초씩 녹음합니다. (예: 켜, 꺼, 시작)</p>
         </div>
       </aside>
 
@@ -1297,7 +1297,7 @@
               <div><span class="k">LOSS</span><span class="v" id="a-m-loss">—</span></div>
               <div><span class="k">ACCURACY</span><span class="v" id="a-m-acc">—</span></div>
             </div>
-            <p class="hint" id="a-train-hint">단어 2개 이상, 각각에 최소 8회 녹음이 있어야 학습할 수 있습니다.</p>
+            <p class="hint" id="a-train-hint">클래스 2개 이상, 각각에 최소 8회 녹음이 있어야 학습할 수 있습니다.</p>
           </div>
         </div>
       </section>
@@ -2140,7 +2140,7 @@ async function poseInit() {
   pEls.inferToggle.addEventListener('click', () => pose.inferring ? poseStopInfer() : poseStartInfer());
   pEls.capture.addEventListener('mousedown', poseStartHold);
   pEls.capture.addEventListener('touchstart', (e) => { e.preventDefault(); poseStartHold(); });
-  poseAddClass('동작 1'); poseAddClass('동작 2');
+  poseAddClass('클래스 1'); poseAddClass('클래스 2');
 
   if (!window.poseDetection) { console.error('[pose] poseDetection library missing'); return; }
   try {
@@ -2158,7 +2158,7 @@ function poseAddClass(name) {
   if (pose.classes.length >= POSE_MAX_CLASSES) return;
   const id = ++poseSeq;
   const color = POSE_PALETTE[(id - 1) % POSE_PALETTE.length];
-  pose.classes.push({ id, name: name || ('동작 ' + id), color, embeddings: [], thumbs: [] });
+  pose.classes.push({ id, name: name || ('클래스 ' + id), color, embeddings: [], thumbs: [] });
   if (pose.selectedId == null) pose.selectedId = id;
   poseRenderClasses(); poseRefresh();
 }
@@ -2423,7 +2423,7 @@ async function audioInit() {
   aEls.capture.addEventListener('click', audioCapture);
   aEls.train.addEventListener('click', audioTrain);
   aEls.inferToggle.addEventListener('click', () => audio.inferring ? audioStopInfer() : audioStartInfer());
-  audioAddClass('단어 1'); audioAddClass('단어 2');
+  audioAddClass('클래스 1'); audioAddClass('클래스 2');
 
   if (!window.speechCommands) { console.error('[audio] speech-commands missing'); return; }
   try {
@@ -2437,7 +2437,7 @@ function audioAddClass(name) {
   if (audio.classes.length >= AUDIO_MAX) return;
   const id = ++audioSeq;
   const color = AUDIO_PALETTE[(id - 1) % AUDIO_PALETTE.length];
-  audio.classes.push({ id, name: name || ('단어 ' + id), color, count: 0 });
+  audio.classes.push({ id, name: name || ('클래스 ' + id), color, count: 0 });
   if (audio.selectedId == null) audio.selectedId = id;
   audioRenderClasses(); audioRefresh();
 }
@@ -3393,7 +3393,6 @@ const NAV_GROUPS = [
 const LEARN_STEPS = ['클래스 만들기', '데이터 수집', '모델 학습', '추론·평가'];
 const VISION_STEPS = ['개념', '실행', '파라미터 조정'];
 NAV_GROUPS[0].items.forEach((k) => { if (FEATURES[k]) FEATURES[k].steps = LEARN_STEPS; });
-NAV_GROUPS[1].items.forEach((k) => { if (FEATURES[k]) FEATURES[k].steps = VISION_STEPS; });
 
 /* 이론 영역 — 학습 정보(데이터·목표·예시) + 알고리즘 정보(원리, K-12 눈높이) */
 const THEORY = {
@@ -3499,6 +3498,7 @@ function selectFeature(key) {
       }));
       syncStepNav(); // 학습추론 기능이면 진행상황 반영
     } else {
+      sn.innerHTML = '';
       sn.style.display = 'none';
     }
   }
