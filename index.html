@@ -12,7 +12,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.5.4/dist/speech-commands.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.2.0/dist/body-pix.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.1.0/dist/blazeface.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface@0.1.0/dist/blazeface.min.umd.js"></script>
 
 <!-- 폰트: Pretendard (한국어 본문) + JetBrains Mono (텔레메트리 데이터) -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
@@ -57,7 +57,8 @@
     --radius-sm:    8px;
 
     --sans: 'Pretendard', -apple-system, sans-serif;
-    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    /* 한글 글리프가 없는 JetBrains Mono 뒤에 Pretendard 폴백 → 한글 깨짐 방지 */
+    --mono: 'JetBrains Mono', 'Pretendard', ui-monospace, monospace;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -680,11 +681,11 @@
   }
   .metrics {
     display: grid; grid-template-columns: repeat(3, 1fr);
-    font-family: var(--mono); font-size: 11px; color: var(--ink-3);
-    letter-spacing: 0.03em;
+    font-family: var(--mono); font-size: 12.5px; color: var(--ink-3);
+    letter-spacing: 0.02em;
   }
-  .metrics > div { display: flex; flex-direction: column; gap: 2px; }
-  .metrics .k { font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-4); }
+  .metrics > div { display: flex; flex-direction: column; gap: 3px; }
+  .metrics .k { font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-4); }
   .metrics .v { font-size: 14px; color: var(--ink); font-weight: 500; }
 
   /* ─────────── 학습 곡선 (SVG line chart) ─────────── */
@@ -1435,7 +1436,7 @@
             <div><span class="k">FPS</span><span class="v" id="ff-fps">—</span></div>
           </div>
           <div style="margin-top:14px">
-            <div style="font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4);display:flex;justify-content:space-between">
+            <div style="font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-4);display:flex;justify-content:space-between">
               <span>MOTION</span><span id="ff-motion" style="color:var(--ink-2)">—</span>
             </div>
             <div class="gauge"><div class="gauge-fill" id="ff-motion-bar" style="background:linear-gradient(90deg,#e11d48,#f59e0b)"></div></div>
@@ -1475,7 +1476,7 @@
       <aside class="card">
         <div class="card-h"><span class="label">DETECTED</span><span class="meta" id="sk-count">—</span></div>
         <div class="card-b">
-          <div style="margin-bottom:10px"><span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4)">검출 신뢰 관절</span>
+          <div style="margin-bottom:10px"><span style="font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-4)">검출 신뢰 관절</span>
             <div class="gauge"><div class="gauge-fill" id="sk-conf-bar"></div></div>
           </div>
           <p class="hint" style="margin-top:12px">관절(파랑)과 뼈대(선)가 실시간으로 그려집니다. 팔다리를 움직여 보세요.</p>
@@ -1513,7 +1514,7 @@
       <aside class="card">
         <div class="card-h"><span class="label">DETECTED</span><span class="meta" id="fc-count">0</span></div>
         <div class="card-b">
-          <div style="margin-bottom:10px"><span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4)">검출된 얼굴 수</span>
+          <div style="margin-bottom:10px"><span style="font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-4)">검출된 얼굴 수</span>
             <div class="gauge"><div class="gauge-fill" id="fc-count-bar"></div></div>
           </div>
           <p class="hint" style="margin-top:12px">여러 명이 함께 화면에 들어오면 각 얼굴에 박스가 그려집니다.</p>
@@ -1556,7 +1557,7 @@
       <aside class="card">
         <div class="card-h"><span class="label">MATCH</span><span class="meta" id="ct-meta">—</span></div>
         <div class="card-b">
-          <div style="margin-bottom:10px"><span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-4)">선택 색 매칭 비율</span>
+          <div style="margin-bottom:10px"><span style="font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-4)">선택 색 매칭 비율</span>
             <div class="gauge"><div class="gauge-fill" id="ct-match-bar"></div></div>
           </div>
           <p class="hint" style="margin-top:12px">조명에 따라 인식이 달라집니다. 선명한 단색 물체가 가장 잘 추적됩니다.</p>
