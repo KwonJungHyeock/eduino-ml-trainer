@@ -282,6 +282,26 @@
   .content main { max-width: none; margin: 0; padding: 0; }
 
   /* 기능 정보 요약 카드 */
+  /* 단계 네비 (image2 탭 스타일 — 번호 뱃지 pill) */
+  .step-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+  .step-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 999px;
+    padding: 7px 14px 7px 7px; font-family: var(--sans); font-size: 13px; font-weight: 500;
+    color: var(--ink-3); cursor: pointer; transition: .14s;
+  }
+  .step-pill:hover:not(.active) { border-color: var(--ink-4); color: var(--ink-2); }
+  .step-pill.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+  .step-pill-num {
+    width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--panel-soft); border: 1px solid var(--border);
+    font-family: var(--mono); font-size: 11px; flex: none;
+  }
+  .step-pill.active .step-pill-num { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .step-sep { width: 12px; height: 1px; background: var(--border-strong); flex: none; }
+  /* 기존 패널 내부 단계바는 상단 StepNav 로 대체 */
+  .steps-bar { display: none; }
+
   .feature-info {
     background: linear-gradient(135deg, #ffffff 0%, var(--accent-soft) 100%);
     border: 1px solid var(--border); border-left: 3px solid var(--accent);
@@ -861,6 +881,9 @@
       </div>
       <p class="fi-desc" id="fi-desc">카메라로 직접 클래스를 만들어 사진을 분류합니다.</p>
     </div>
+
+    <!-- 단계 네비 (기능별 진행 단계) -->
+    <div class="step-nav" id="step-nav"></div>
 
 <!-- ──────────────────────── 메인 ──────────────────────── -->
 <main>
@@ -2889,6 +2912,12 @@ const NAV_GROUPS = [
   { title: 'AI 영상처리 · 체험하는 AI', items: ['filter', 'face', 'skeleton', 'detect', 'segment'] },
 ];
 
+/* 단계 네비 — 학습추론/영상처리 기능군에 따라 단계 라벨이 다르다. */
+const LEARN_STEPS = ['데이터 수집', '라벨링', '학습', '추론·평가'];
+const VISION_STEPS = ['개념', '실행', '파라미터 조정'];
+NAV_GROUPS[0].items.forEach((k) => { if (FEATURES[k]) FEATURES[k].steps = LEARN_STEPS; });
+NAV_GROUPS[1].items.forEach((k) => { if (FEATURES[k]) FEATURES[k].steps = VISION_STEPS; });
+
 function buildSidebar() {
   const nav = document.getElementById('sidebar');
   nav.innerHTML = NAV_GROUPS.map((g) => `
@@ -2924,6 +2953,22 @@ function selectFeature(key) {
   $('fi-type').textContent = f.type;
   $('fi-model').textContent = f.model;
   $('fi-desc').textContent = f.desc;
+
+  // 상단 단계 네비 (config.steps 기반)
+  const sn = $('step-nav');
+  if (sn) {
+    if (f.steps && f.steps.length) {
+      sn.style.display = '';
+      sn.innerHTML = f.steps.map((s, i) =>
+        `<button class="step-pill${i === 0 ? ' active' : ''}" data-step="${i}"><span class="step-pill-num">${i + 1}</span>${s}</button>`
+      ).join('<span class="step-sep"></span>');
+      sn.querySelectorAll('.step-pill').forEach((b) => b.addEventListener('click', () => {
+        sn.querySelectorAll('.step-pill').forEach((x) => x.classList.toggle('active', x === b));
+      }));
+    } else {
+      sn.style.display = 'none';
+    }
+  }
 }
 
 buildSidebar();
